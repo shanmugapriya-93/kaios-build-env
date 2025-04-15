@@ -405,10 +405,7 @@ void iota_test_Setup
 	}
 }
 
-EMSCRIPTEN_KEEPALIVE unsigned int iota_test_init
-(
-	void
-)
+EMSCRIPTEN_KEEPALIVE unsigned int iota_test_init(void)
 {
 	pal_MutexLock(iotaState.mutexHandle);
 	unsigned int error = LIMS_NO_ERROR;
@@ -421,156 +418,104 @@ EMSCRIPTEN_KEEPALIVE unsigned int iota_test_init
 	memset(&callback, 0, sizeof(lims_CallbackStruct));
 
 	iota_test_Setup();
-	
+
 	printf("Calling lims_Init()\n");
 
 	config.pal = iotaState.palLimsInstance;
 	config.logHandle = iotaState.logHandle;
 
-	// setting default channel is TCP only. actual configuration options read from config ini file.
 	config.bEnableTcp = Enum_TRUE;
 	config.bEnableUdp = Enum_TRUE;
 
-	strcpy(config.pHomeDomain, "ecrio.com");
-	strcpy(config.pPassword, "ecrio@123");
-	strcpy(config.pPrivateIdentity, "1111@ecrio.com");
-	strcpy(config.pPublicIdentity, "sip:1111@ecrio.com");
+	// Allocate and copy strings safely
+	config.pHomeDomain = strdup("ecrio.com");
+	config.pPassword = strdup("ecrio@123");
+	config.pPrivateIdentity = strdup("1111@ecrio.com");
+	config.pPublicIdentity = strdup("sip:1111@ecrio.com");
+	config.pUserAgent = strdup("Ecrio-iota-Client/V1.0");
+	config.pDeviceId = strdup("01437600-003868-4");
+	config.pPANI = strdup("3GPP-E-UTRAN-FDD;utran-cell-id-3gpp=310410000b0038000");
 
-	strcpy(config.pUserAgent, "Ecrio-iota-Client/V1.0");
-	printf("After strcpy config.pUserAgent. Line No:384\n");
 	config.uRegExpireInterval = 36000;
 	config.bSubscribeRegEvent = false;
 	config.bUnSubscribeRegEvent = false;
-	printf("After config.bUnsubcriberegEvent Line No:388\n");
 	config.eAlgorithm = EcrioSipAuthAlgorithmMD5;
-	strcpy(config.pDeviceId, "01437600-003868-4");
 	config.pOOMObject = default_oom_GetObject();
-	printf("After config.pOOMObject. Line No:392\n");
 	config.uMtuSize = 1300;
-	strcpy(config.pPANI, "3GPP-E-UTRAN-FDD;utran-cell-id-3gpp=310410000b0038000");
 
 	config.bIsRelayEnabled = Enum_FALSE;
 	config.pRelayServerIP = NULL;
 	config.uRelayServerPort = 2855;
 
 	iotaState.bIsFileSender = false;
-	printf("After iotaState.bIsFileSender. Line No:401\n");
 
 	strcpy(iotaState.calleeNumber, "sip:+14087770002@ecrio.com");
 	strcpy(iotaState.message, "initial string");
 
-	//config.cpm.pUsername = config.pPublicIdentity;
 	callback.pLimsCallback = limsCallback;
 	callback.pLimsGetPropertyCallback = NULL;
 	callback.pContext = NULL;
 	callback.pUCEPropertyCallback = NULL;
-	printf("After callback.pUCEPropertyCallback. Line No:411\n");
+
 	pal_MutexUnlock(iotaState.mutexHandle);
 	iotaState.limsHandle = lims_Init(&config, &callback, &error);
 	pal_MutexLock(iotaState.mutexHandle);
+
 	if (iotaState.limsHandle != NULL)
 	{
 		lims_NetworkConnectionStruct network;
 		memset(&network, 0, sizeof(lims_NetworkConnectionStruct));
-		printf("Inside If block. After memset Line No:419\n");
 		network.uNoOfRemoteIps = 1;
+
 		network.ppRemoteIPs = (char **)calloc(1, sizeof(char *));
-		strcpy(network.ppRemoteIPs[0], "192.168.29.197");
+		if (network.ppRemoteIPs != NULL) {
+			network.ppRemoteIPs[0] = malloc(strlen("192.168.29.197") + 1);
+			if (network.ppRemoteIPs[0]) {
+				strcpy(network.ppRemoteIPs[0], "192.168.29.197");
+			}
+		}
+
 		network.uRemotePort = 5060;
 		network.pLocalIp = NULL;
 		network.uLocalPort = 0;
-		printf("After network configs. Line No:426\n");
-
-		printf("RemoteIP[0]: %s\n", network.ppRemoteIPs[0]);
-		printf("LocalIp: %s\n", network.pLocalIp);
-
 		network.eIPType = lims_Network_IP_Type_V4;
-
-		printf("Calling lims_NetworkStateChange()\n");
 		network.uStatus = lims_Network_Status_Success;
-		printf("After network.uStatus. Line No:435\n");
+
 		pal_MutexUnlock(iotaState.mutexHandle);
 		error = lims_NetworkStateChange(iotaState.limsHandle, lims_Network_PDN_Type_IMS, lims_Network_Connection_Type_LTE, &network);
 		pal_MutexLock(iotaState.mutexHandle);
-		if (error != LIMS_NO_ERROR)
-		{printf("Inside another if block if error!=LIMS_NO_ERROR. Line No:440\n");
-			printf("lims_NetworkStateChange failed \n");
+
+		if (error != LIMS_NO_ERROR) {
+			printf("lims_NetworkStateChange failed\n");
 		}
-		printf("Before cleanup block. Line No:443\n");
-		Cleanup :
 
-				// Release memory consumed by ini handler for networking.
-				if (network.ppRemoteIPs != NULL)
-				{printf("Inside another if block if network.ppRemoteIPs!=NULL. Line No:448\n");
-					unsigned int i;
-
-					for (i = 0; i < network.uNoOfRemoteIps; ++i)
-					{printf("Inside for loop. Line No:452\n");
-						if (network.ppRemoteIPs[i])
-						{printf("Inside if block inside for loop. Line No:454\n");
-							free(network.ppRemoteIPs[i]);
-						}
-					}
-
-					free(network.ppRemoteIPs);
+		// Cleanup remote IPs
+		if (network.ppRemoteIPs != NULL) {
+			for (unsigned int i = 0; i < network.uNoOfRemoteIps; ++i) {
+				if (network.ppRemoteIPs[i]) {
+					free(network.ppRemoteIPs[i]);
 				}
+			}
+			free(network.ppRemoteIPs);
+		}
 	}
 
-	// Release memory consumed by ini handler for configuration.
-	if (config.pHomeDomain)
-	{
-		free(config.pHomeDomain);
-	}
+	// Release all config fields if allocated
+	if (config.pHomeDomain) free(config.pHomeDomain);
+	if (config.pPassword) free(config.pPassword);
+	if (config.pPrivateIdentity) free(config.pPrivateIdentity);
+	if (config.pPublicIdentity) free(config.pPublicIdentity);
+	if (config.pUserAgent) free(config.pUserAgent);
+	if (config.pDeviceId) free(config.pDeviceId);
+	if (config.pDisplayName) free(config.pDisplayName);  // Only if used
+	if (config.pPANI) free(config.pPANI);
+	if (config.pRelayServerIP) free(config.pRelayServerIP);
+	if (config.pTLSCertificate) free(config.pTLSCertificate);
 
-	if (config.pPassword)
-	{
-		free(config.pPassword);
-	}
-
-	if (config.pPrivateIdentity)
-	{
-		free(config.pPrivateIdentity);
-	}
-
-	if (config.pPublicIdentity)
-	{
-		free(config.pPublicIdentity);
-	}
-
-	if (config.pUserAgent)
-	{
-		free(config.pUserAgent);
-	}
-
-	if (config.pDeviceId)
-	{
-		free(config.pDeviceId);
-	}
-
-	if (config.pDisplayName)
-	{
-		free(config.pDisplayName);
-	}
-
-	if (config.pPANI)
-	{
-		free(config.pPANI);
-	}
-
-
-	if (config.pRelayServerIP)
-	{
-		free(config.pRelayServerIP);
-	}
-
-	if (config.pTLSCertificate)
-	{
-		free(config.pTLSCertificate);
-	}
-	printf("After releasing memory. Line No:514\n");
 	pal_MutexUnlock(iotaState.mutexHandle);
 	return error;
 }
+
 
 EMSCRIPTEN_KEEPALIVE unsigned int iota_test_deinit
 (
