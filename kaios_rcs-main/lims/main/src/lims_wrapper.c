@@ -475,8 +475,8 @@ EMSCRIPTEN_KEEPALIVE unsigned int iota_test_init
 		printf("Inside If block. After memset Line No:419\n");
 		network.uNoOfRemoteIps = 1;
 		network.ppRemoteIPs = (char **)calloc(1, sizeof(char *));
-		strcpy(network.ppRemoteIPs[0], "192.168.1.26");
-		network.uRemotePort = 9090;
+		strcpy(network.ppRemoteIPs[0], "192.168.29.197");
+		network.uRemotePort = 5060;
 		network.pLocalIp = NULL;
 		network.uLocalPort = 0;
 		printf("After network configs. Line No:426\n");
