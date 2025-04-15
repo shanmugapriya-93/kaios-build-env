@@ -1,0 +1,12 @@
+# ninja log v5
+1	275	1744702176831057706	CMakeFiles/pal.dir/EcrioPAL_Memory.cpp.o	87f4e55d6819a95c
+0	290	1744702176845057705	CMakeFiles/pal.dir/EcrioPAL.cpp.o	b9fb215b28e5f591
+1	360	1744702176914057701	CMakeFiles/pal.dir/EcrioPAL_Log.cpp.o	e3d7e52d4d2bea6
+276	577	1744702177132057686	CMakeFiles/pal.dir/EcrioPAL_Mutex.cpp.o	8a00d61199bbce5f
+361	688	1744702177245057678	CMakeFiles/pal.dir/EcrioPAL_String.cpp.o	9a5e8c9a66d97786
+290	3796	1744702180345057471	CMakeFiles/pal.dir/EcrioPAL_Socket.cpp.o	cfd8909da5c2ab90
+578	3808	1744702180345057471	CMakeFiles/pal.dir/EcrioPAL_Timer.cpp.o	8711431a76a28886
+689	3823	1744702180365057469	CMakeFiles/pal.dir/EcrioPAL_Utility.cpp.o	440998bb9dbf56f1
+3798	4005	1744702180563057456	CMakeFiles/pal.dir/EcrioPFD_Shared.cpp.o	5fbf9f3c2bd504a1
+3808	4008	1744702180566057456	CMakeFiles/pal.dir/EcrioPFD_Signal.cpp.o	a06a722be585b75f
+4008	4144	1744702180646057450	libpal.a	54d08e332494432
