@@ -1,0 +1,166 @@
+/******************************************************************************
+
+Copyright (c) 2015-2020 Ecrio, Inc. All Rights Reserved.
+
+Provided as supplementary materials for Licensed Software.
+
+This file contains Confidential Information of Ecrio, Inc. and its suppliers.
+Certain inventions disclosed in this file may be claimed within patents owned
+or patent applications filed by Ecrio or third parties. No part of this
+software may be reproduced or transmitted in any form or by any means or used
+to make any derivative work (such as translation, transformation or
+adaptation) without express prior written consent from Ecrio. You may not mark
+or brand this file with any trade name, trademarks, service marks, or product
+names other than the original brand (if any) provided by Ecrio. Any use of
+Ecrio's or its suppliers work, confidential information, patented inventions,
+or patent-pending inventions is subject to the terms and conditions of your
+written license agreement with Ecrio. All other use and disclosure is strictly
+prohibited.
+
+Ecrio reserves the right to revise this software and to make changes in
+content from time to time without obligation on the part of Ecrio to provide
+notification of such revision or changes.
+
+ECRIO MAKES NO REPRESENTATIONS OR WARRANTIES THAT THE SOFTWARE IS FREE OF
+ERRORS OR THAT THE SOFTWARE IS SUITABLE FOR YOUR USE. THE SOFTWARE IS PROVIDED
+ON AN "AS IS" BASIS FOR USE AT YOUR OWN RISK. ECRIO MAKES NO WARRANTIES,
+TERMS OR CONDITIONS, EXPRESS OR IMPLIED,EITHER IN FACT OR BY OPERATION OF LAW,
+STATUTORY OR OTHERWISE, INCLUDING WARRANTIES, TERMS, OR CONDITIONS OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND SATISFACTORY QUALITY.
+
+TO THE FULL EXTENT ALLOWED BY LAW, ECRIO ALSO EXCLUDES FOR ITSELF AND ITS
+SUPPLIERS ANY LIABILITY, WHETHER BASED IN CONTRACT OR TORT (INCLUDING
+NEGLIGENCE), FOR DIRECT, INCIDENTAL, CONSEQUENTIAL, INDIRECT, SPECIAL, OR
+PUNITIVE DAMAGES OF ANY KIND, OR FOR LOSS OF REVENUE OR PROFITS, LOSS OF
+BUSINESS, LOSS OF INFORMATION OR DATA, OR OTHER FINANCIAL LOSS ARISING OUT
+OF OR IN CONNECTION WITH THIS SOFTWARE, EVEN IF ECRIO HAS BEEN ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGES. THIS SOFTWARE MAY BE PROVIDED ON A DOWNLOAD SITE OR
+ON COMPACT DISK AND THE OTHER SOFTWARE AND DOCUMENTATION ON THE DOWNLOAD SITE OR
+COMPACT DISK ARE SUBJECT TO THE LICENSE AGREEMENT ACCOMPANYING THE COMPACT DISK.
+
+******************************************************************************/
+
+#include "EcrioPAL.h"
+#include "EcriogZip.h"
+#include "zlib.h"
+
+u_int32 ec_gzip_ZipWrite
+(
+	u_char **ppbuf,
+	u_int32 *pcurlen,
+	u_char *addbuf,
+	u_int32 addlen
+)
+{
+	u_int32 uError = ECRIO_GZIP_NO_ERROR;
+	char *pnewbuf = 0;
+
+	/* Check arithmetic overflow */
+	if (pal_UtilityArithmeticOverflowDetected(addlen, 1) == Enum_TRUE)
+	{
+		return ECRIO_GZIP_MEMORY_ERROR;
+	}
+	if (pal_UtilityArithmeticOverflowDetected(*pcurlen, (addlen + 1)) == Enum_TRUE)
+	{
+		return ECRIO_GZIP_MEMORY_ERROR;
+	}
+
+	/* Check for memory overflow - exclude if memory to be allocated exceeds limit of u_int32 */
+	if (pal_UtilityDataOverflowDetected((*pcurlen + addlen + 1), sizeof(char)) == Enum_TRUE)
+	{
+		return ECRIO_GZIP_MEMORY_ERROR;
+	}
+
+	pal_MemoryAllocate( (*pcurlen + addlen + 1)*sizeof(char), (void**)&pnewbuf );
+	if (pnewbuf == NULL)
+	{
+		return ECRIO_GZIP_MEMORY_ERROR;
+	}
+	if (*ppbuf != NULL)
+	{
+		pal_MemoryCopy(pnewbuf, (*pcurlen + addlen + 1), *ppbuf, *pcurlen);
+		pal_MemoryFree((void**)ppbuf);
+		*ppbuf = NULL;
+	}
+
+	pal_MemoryCopy(pnewbuf + *pcurlen, (*pcurlen + addlen + 1), addbuf, addlen);
+	*pcurlen += addlen;
+	*ppbuf = (u_char*)pnewbuf;
+
+	return uError;
+}
+
+u_int32 EcriogZipDeCompress
+(
+	u_char *pInBuffer,
+	u_int32 uInBufferLength,
+	u_char **ppOutBuffer,
+	u_int32 *pOutBufferLength
+)
+{
+	u_int32 uError = ECRIO_GZIP_NO_ERROR;
+    u_int32 len = 0;
+	u_int32 olen = 0;
+	u_int32 ilen = 0;
+	gzFile in = 0;
+	u_char buf[ECRIO_GZIP_CHUNK_SIZE] = { 0 };
+	u_char *inbuf = NULL;
+	u_char *outbuf = NULL;
+
+	if (pInBuffer == NULL || uInBufferLength == 0 || ppOutBuffer == NULL || pOutBufferLength == NULL)
+	{
+		return ECRIO_GZIP_INSUFFICIENT_DATA;
+	}
+
+	pal_MemoryAllocate(uInBufferLength, (void**)&inbuf);
+	if (inbuf == NULL)
+	{
+		return ECRIO_GZIP_MEMORY_ERROR;
+	}
+	pal_MemoryCopy(inbuf, uInBufferLength, pInBuffer, uInBufferLength);
+	ilen = uInBufferLength;
+
+	in = gzopen("rb",(char**)&inbuf, &ilen);
+	for (;;)
+	{
+		len = gzread(in, buf, sizeof(buf));
+		if (len < 0)
+		{
+			gzclose( in );
+			uError = ECRIO_GZIP_MEMORY_ERROR;
+			goto Err;
+		}
+		if (len == 0)
+			break;
+		uError = ec_gzip_ZipWrite(&outbuf, &olen, buf, len);
+		if(uError != ECRIO_GZIP_NO_ERROR)
+		{
+			gzclose(in);
+			goto Err;
+		}
+	}
+
+	if (gzclose(in) != Z_OK)
+	{
+		uError = ECRIO_GZIP_MEMORY_ERROR;
+		goto Err;
+	}
+
+	if (ppOutBuffer != NULL)
+	{
+		*ppOutBuffer = outbuf;
+		outbuf = NULL;
+	}
+	if(pOutBufferLength != NULL)
+	{
+		*pOutBufferLength = olen;
+	}
+Err:
+
+	if(inbuf != NULL)
+	{
+		pal_MemoryFree((void**)&inbuf);
+	}
+
+	return uError;
+}
