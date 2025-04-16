@@ -435,7 +435,7 @@ unsigned int iota_test_init(void) {
 
     config.pal = iotaState.palLimsInstance;
     config.logHandle = iotaState.logHandle;
-    config.bEnableTcp = Enum_TRUE;
+    config.bEnableTcp = Enum_FALSE;
     config.bEnableUdp = Enum_TRUE;
 
     EM_ASM({ console.log("STEP 5: Allocating config strings"); });
