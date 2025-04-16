@@ -53,6 +53,7 @@ COMPACT DISK ARE SUBJECT TO THE LICENSE AGREEMENT ACCOMPANYING THE COMPACT DISK.
  #include <emscripten.h>
  
  #include "EcrioPAL.h"
+ #include "EcrioLog.h"
  #include "lims.h"
  
  #include "lims_wrapper.h"
@@ -411,16 +412,29 @@ COMPACT DISK ARE SUBJECT TO THE LICENSE AGREEMENT ACCOMPANYING THE COMPACT DISK.
 
     memset(&iotaState, 0, sizeof(iotaTestStateStruct));
 
+    // Initialize PAL instance (assuming you have a function for this)
+    PALINSTANCE palInstance = default_pal_GetObject();  // Replace with actual function to get PAL instance
+    if (!palInstance) {
+        printf("[ERROR] Failed to get PAL instance!\n");
+        return;
+    }
+
     // Create mutex
-    iotaState.mutexHandle = pal_MutexCreate();
+    iotaState.mutexHandle = pal_MutexCreate(palInstance, &iotaState.mutexHandle);
     if (!iotaState.mutexHandle) {
         printf("[ERROR] Failed to create mutex!\n");
         return;
     }
 
-    // You can also initialize other iotaState members here
+    // Initialize log object
     iotaState.logHandle = default_log_GetObject();
-    iotaState.palLimsInstance = default_pal_GetObject();
+    if (!iotaState.logHandle) {
+        printf("[ERROR] Failed to get log object!\n");
+        return;
+    }
+
+    // Initialize PAL instance
+    iotaState.palLimsInstance = palInstance;  // Assuming palInstance is the correct object
 
     printf("[SETUP] Mutex, log, and palLimsInstance initialized\n");
 }
