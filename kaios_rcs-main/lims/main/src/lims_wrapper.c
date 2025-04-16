@@ -408,7 +408,18 @@ LOGHANDLE default_log_GetObject(void);
 	 }
  }
 
- EMSCRIPTEN_KEEPALIVE
+ #include <stdio.h>
+#include <string.h>
+#include <stdint.h>  // for uintptr_t
+#include <emscripten/emscripten.h>
+#include "lims_wrapper.h"  // your header
+
+extern iotaTestStateStruct iotaState;
+
+PALINSTANCE default_pal_GetObject(void);
+LOGHANDLE default_log_GetObject(void);
+
+EMSCRIPTEN_KEEPALIVE
 void iota_test_setup_env(void) {
     printf("[SETUP] iota_test_setup_env() called\n");
 
@@ -419,7 +430,8 @@ void iota_test_setup_env(void) {
         printf("[WARN] PAL instance is NULL\n");
     }
 
-    iotaState.mutexHandle = pal_MutexCreate(palInstance, &iotaState.mutexHandle);
+    // FIXED cast from uint32_t to void*
+    iotaState.mutexHandle = (MUTEXHANDLE)(uintptr_t)pal_MutexCreate(palInstance, &iotaState.mutexHandle);
     if (!iotaState.mutexHandle) {
         printf("[ERROR] Failed to create mutex!\n");
         return;
@@ -435,16 +447,6 @@ void iota_test_setup_env(void) {
     printf("[SETUP] Mutex, log, and palLimsInstance initialized\n");
 }
 
-// Stub implementation for PAL and LOG accessors (can be replaced with real ones)
-PALINSTANCE default_pal_GetObject(void) {
-    // Return actual PAL instance if available
-    return NULL;
-}
-
-LOGHANDLE default_log_GetObject(void) {
-    // Return actual LOG handle if available
-    return NULL;
-}
 
  
  EMSCRIPTEN_KEEPALIVE unsigned int iota_test_init(void)
