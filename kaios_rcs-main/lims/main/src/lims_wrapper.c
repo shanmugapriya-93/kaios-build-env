@@ -406,20 +406,13 @@ COMPACT DISK ARE SUBJECT TO THE LICENSE AGREEMENT ACCOMPANYING THE COMPACT DISK.
 	 }
  }
 
- EMSCRIPTEN_KEEPALIVE void iota_test_setup_env(void)
-{
+ EMSCRIPTEN_KEEPALIVE void iota_test_setup_env(void) {
     printf("[SETUP] iota_test_setup_env() called\n");
 
     memset(&iotaState, 0, sizeof(iotaTestStateStruct));
 
-    // Initialize PAL instance (assuming you have a function for this)
-    PALINSTANCE palInstance = default_pal_GetObject();  // Replace with actual function to get PAL instance
-    if (!palInstance) {
-        printf("[ERROR] Failed to get PAL instance!\n");
-        return;
-    }
-
     // Create mutex
+    PALINSTANCE palInstance = get_pal_instance();  // Use the correct function
     iotaState.mutexHandle = pal_MutexCreate(palInstance, &iotaState.mutexHandle);
     if (!iotaState.mutexHandle) {
         printf("[ERROR] Failed to create mutex!\n");
