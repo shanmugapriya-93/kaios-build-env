@@ -404,10 +404,34 @@ COMPACT DISK ARE SUBJECT TO THE LICENSE AGREEMENT ACCOMPANYING THE COMPACT DISK.
 		 return;
 	 }
  }
+
+ EMSCRIPTEN_KEEPALIVE void iota_test_setup_env(void)
+{
+    printf("[SETUP] iota_test_setup_env() called\n");
+
+    memset(&iotaState, 0, sizeof(iotaTestStateStruct));
+
+    // Create mutex
+    iotaState.mutexHandle = pal_MutexCreate();
+    if (!iotaState.mutexHandle) {
+        printf("[ERROR] Failed to create mutex!\n");
+        return;
+    }
+
+    // You can also initialize other iotaState members here
+    iotaState.logHandle = default_log_GetObject();
+    iotaState.palLimsInstance = default_pal_GetObject();
+
+    printf("[SETUP] Mutex, log, and palLimsInstance initialized\n");
+}
  
  EMSCRIPTEN_KEEPALIVE unsigned int iota_test_init(void)
 {
     printf("[INIT] Entered iota_test_init()\n");
+	if (!iotaState.mutexHandle) {
+        printf("[ERROR] mutexHandle is NULL. Aborting init.\n");
+        return 999;
+    }
     pal_MutexLock(iotaState.mutexHandle);
     unsigned int error = LIMS_NO_ERROR;
     lims_ConfigStruct config;
