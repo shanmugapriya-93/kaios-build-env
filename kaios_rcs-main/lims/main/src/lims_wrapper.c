@@ -863,6 +863,10 @@ PALINSTANCE default_pal_GetObject(void) {
 LOGHANDLE default_log_GetObject(void) {
     return (LOGHANDLE)0x2; // Return a non-NULL dummy pointer
 }
+MUTEXHANDLE pal_MutexCreate(PALINSTANCE palInstance, MUTEXHANDLE *mutexOut) {
+    printf("[STUB] pal_MutexCreate() called\n");
+    return (MUTEXHANDLE)0x1234; // Dummy non-NULL mutex
+}
 
 
  
