@@ -56,6 +56,10 @@ COMPACT DISK ARE SUBJECT TO THE LICENSE AGREEMENT ACCOMPANYING THE COMPACT DISK.
 #include "lims.h"
 
 #include "lims_wrapper.h"
+#ifndef LIMS_ERROR_MEMORY
+#define LIMS_ERROR_MEMORY 1001  // Or any unused error code
+#endif
+
 
 #if 0
 typedef struct
