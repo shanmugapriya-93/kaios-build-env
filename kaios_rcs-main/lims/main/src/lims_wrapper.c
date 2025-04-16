@@ -428,7 +428,7 @@ COMPACT DISK ARE SUBJECT TO THE LICENSE AGREEMENT ACCOMPANYING THE COMPACT DISK.
 	 config.logHandle = iotaState.logHandle;
  
 	 // setting default channel is TCP only. actual configuration options read from config ini file.
-	 config.bEnableTcp = Enum_TRUE;
+	 config.bEnableTcp = Enum_FALSE;
 	 config.bEnableUdp = Enum_TRUE;
  
 	 strcpy(config.pHomeDomain, "ecrio.com");
