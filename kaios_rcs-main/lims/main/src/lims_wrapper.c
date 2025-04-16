@@ -354,18 +354,6 @@ EMSCRIPTEN_KEEPALIVE void limsCallback
 	}
 }
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <emscripten/emscripten.h>
-#include "lims.h"
-#include "pal.h"
-
-extern iotaTestStateStruct iotaState;
-extern void* default_oom_GetObject(void);
-extern void limsCallback(void);
-
-// ✅ Proper setup
 void iota_test_Setup(void) {
     unsigned int error = KPALErrorNone;
     iotaState.limsHandle = NULL;
