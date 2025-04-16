@@ -855,6 +855,14 @@ void iota_test_setup_env(void) {
 	 pal_MutexUnlock(iotaState.mutexHandle);
 	 return error;
  }
- 
+ // At the bottom of lims_wrapper.c
+PALINSTANCE default_pal_GetObject(void) {
+    return (PALINSTANCE)0x1; // Return a non-NULL dummy pointer
+}
+
+LOGHANDLE default_log_GetObject(void) {
+    return (LOGHANDLE)0x2; // Return a non-NULL dummy pointer
+}
+
 
  
