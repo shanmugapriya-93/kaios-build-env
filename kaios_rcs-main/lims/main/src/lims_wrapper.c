@@ -369,16 +369,21 @@ void iota_test_Setup
 	error = pal_Init(iotaState.logHandle, &iotaState.palLimsInstance);
 	if (error != KPALErrorNone)
 	{
-		printf("Could not initialize the PAL instance!\n");
+		printf("❌ Could not initialize the PAL instance! Error code: %u\n", error);
 
-		if (iotaState.logHandle != NULL)
-		{
-			// Deinitialize the logging instance.
-			pal_LogDeinit(&iotaState.logHandle);
-		}
+    if (iotaState.logHandle != NULL)
+    {
+        // Deinitialize the logging instance.
+        pal_LogDeinit(&iotaState.logHandle);
+    }
 
-		return;
-	}
+    return;
+}
+else
+{
+    printf("✅ PAL instance initialized successfully: %p\n", iotaState.palLimsInstance);
+    EM_ASM({ console.log("✅ PAL instance initialized in WASM:", $0); }, iotaState.palLimsInstance);
+}
 
 	error = pal_MutexCreate(iotaState.palLimsInstance, &iotaState.mutexHandle);
 	if (error != KPALErrorNone)
@@ -406,15 +411,6 @@ void iota_test_Setup
 		}
 
 		return;
-	}
-}
-
-
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include <emscripten.h>
-#include "lims.h"  // Assuming lims.h contains necessary types and functions
 
 EMSCRIPTEN_KEEPALIVE
 unsigned int iota_test_init(void)
@@ -437,6 +433,13 @@ unsigned int iota_test_init(void)
 
     // Step 4: Setting basic config fields
     EM_ASM({ console.log("STEP 4: Setting basic config fields"); });
+	if (iotaState.palLimsInstance == NULL) {
+		EM_ASM({ console.error("❌ iotaState.palLimsInstance is NULL before setting config.pal"); });
+		pal_MutexUnlock(iotaState.mutexHandle);
+		return 9999;  // or LIMS_ERROR_INIT_FAILED
+	}
+	
+	printf("✔ PAL instance is valid: %p\n", iotaState.palLimsInstance);
     config.pal = iotaState.palLimsInstance;
     config.logHandle = iotaState.logHandle;
     config.bEnableTcp = Enum_TRUE;
