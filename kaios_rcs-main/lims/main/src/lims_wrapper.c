@@ -569,5 +569,174 @@ unsigned int iota_test_deregister(void) {
     }
 
     pal_MutexUnlock(iotaState.mutexHandle);
-    return error;
+    error = lims_Deregister(iotaState.limsHandle);
+		pal_MutexLock(iotaState.mutexHandle);
+		if (error != LIMS_NO_ERROR)
+		{
+			printf("lims_Deregister() failed\n");
+		}
+	}
+
+	pal_MutexUnlock(iotaState.mutexHandle);
+	return error;
 }
+
+EMSCRIPTEN_KEEPALIVE void iota_test_getRandomStringHex
+(
+	unsigned char *pStr,
+	unsigned int uLength
+)
+{
+	unsigned int i = 0;
+
+	for (i = 0; i < uLength; i++)
+	{
+		*(pStr + i) = iotaState.seedHex[pal_UtilityRandomNumber() % 16];
+	}
+}
+
+
+EMSCRIPTEN_KEEPALIVE void iota_test_getContributionID(u_char* pContributionID)
+{
+	u_char tempBuf[13];
+
+	memset(tempBuf, 0, 13);
+	iota_test_getRandomStringHex(tempBuf, 8);
+	if (NULL == pal_StringNCopy(pContributionID, 64, (const u_char *)tempBuf, pal_StringLength((const u_char *)tempBuf)))
+	{
+		iota_test_printf("Memory copy error.\n");
+		return;
+	}
+	if (NULL == pal_StringNConcatenate(pContributionID, 64 - pal_StringLength((const u_char *)pContributionID), (const u_char *)"-", pal_StringLength((const u_char *)"-")))
+	{
+		iota_test_printf("Memory copy error.\n");
+		return;
+	}
+	memset(tempBuf, 0, 13);
+	iota_test_getRandomStringHex(tempBuf, 4);
+	if (NULL == pal_StringNConcatenate(pContributionID, 64 - pal_StringLength((const u_char *)pContributionID), tempBuf, pal_StringLength((const u_char *)tempBuf)))
+	{
+		iota_test_printf("Memory copy error.\n");
+		return;
+	}
+	if (NULL == pal_StringNConcatenate(pContributionID, 64 - pal_StringLength((const u_char *)pContributionID), (const u_char *)"-", pal_StringLength((const u_char *)"-")))
+	{
+		iota_test_printf("Memory copy error.\n");
+		return;
+	}
+	memset(tempBuf, 0, 13);
+	iota_test_getRandomStringHex(tempBuf, 4);
+	if (NULL == pal_StringNConcatenate(pContributionID, 64 - pal_StringLength((const u_char *)pContributionID), tempBuf, pal_StringLength(tempBuf)))
+	{
+		iota_test_printf("Memory copy error.\n");
+		return;
+	}
+	if (NULL == pal_StringNConcatenate(pContributionID, 64 - pal_StringLength((const u_char *)pContributionID), (const u_char *)"-", pal_StringLength((const u_char *)"-")))
+	{
+		iota_test_printf("Memory copy error.\n");
+		return;
+	}
+	memset(tempBuf, 0, 13);
+	iota_test_getRandomStringHex(tempBuf, 4);
+	if (NULL == pal_StringNConcatenate(pContributionID, 64 - pal_StringLength((const u_char *)pContributionID), tempBuf, pal_StringLength((const u_char *)tempBuf)))
+	{
+		iota_test_printf("Memory copy error.\n");
+		return;
+	}
+	if (NULL == pal_StringNConcatenate(pContributionID, 64 - pal_StringLength((const u_char *)pContributionID), (const u_char *)"-", pal_StringLength((const u_char *)"-")))
+	{
+		iota_test_printf("Memory copy error.\n");
+		return;
+	}
+	memset(tempBuf, 0, 13);
+	iota_test_getRandomStringHex(tempBuf, 12);
+	if (NULL == pal_StringNConcatenate(pContributionID, 64 - pal_StringLength((const u_char *)pContributionID), tempBuf, pal_StringLength(tempBuf)))
+	{
+		iota_test_printf("Memory copy error.\n");
+		return;
+	}
+}
+
+
+EMSCRIPTEN_KEEPALIVE unsigned int iota_test_SendStandAloneMessage
+(
+	char* pText
+)
+{
+	pal_MutexLock(iotaState.mutexHandle);
+	unsigned int error = LIMS_NO_ERROR;
+	lims_StandAloneMessageStruct sendMessg;
+	EcrioCPMBufferStruct text;
+	EcrioCPMConversationsIdStruct ids;
+	u_char convId[64];
+	u_char contId[64];
+	char *pCallId = NULL;
+	char imdnId[21] = { '\0' };
+
+	EcrioCPMMessageStruct message;
+
+	memset(&sendMessg, 0, sizeof(lims_StandAloneMessageStruct));
+	memset(&text, 0, sizeof(EcrioCPMBufferStruct));
+	memset(&ids, 0, sizeof(EcrioCPMConversationsIdStruct));
+	memset(&convId, 0, 64);
+	memset(&contId, 0, 64);
+	memset(&message, 0, sizeof(EcrioCPMMessageStruct));
+
+	printf("Calling lims_SendStandAloneMessage()\n");
+
+	sendMessg.pDestUri = (char *)iotaState.calleeNumber;
+
+	sendMessg.bIsChatbot = false;
+	sendMessg.bDeleteChatBotToken = false;
+
+	{
+		sendMessg.pMessage = &message;
+		sendMessg.pMessage->imdnConfig = EcrioCPMIMDispositionConfigPositiveDelivery | EcrioCPMIMDispositionConfigDisplay;
+		iota_test_getRandomString((unsigned char *)imdnId, 20);
+		sendMessg.pMessage->pIMDNMsgId = (char *)imdnId;
+
+		sendMessg.pMessage->message.pBuffer = &text;
+		sendMessg.pMessage->eContentType = EcrioCPMContentTypeEnum_Text;
+		text.pMessage = (u_char*)pText;
+		text.uMessageLen = pal_StringLength(text.pMessage);
+		sendMessg.pConvId = &ids;
+
+		iota_test_getContributionID(contId);
+		iota_test_getContributionID(convId);
+		ids.pContributionId = contId;
+		ids.pConversationId = convId;
+
+		if (NULL == pal_StringNCopy(iotaState.contID, 64, ids.pContributionId, pal_StringLength(ids.pContributionId)))
+		{
+			printf("Memory copy error.\n");
+			return 1;
+		}
+		if (NULL == pal_StringNCopy(iotaState.convID, 64, ids.pConversationId, pal_StringLength(ids.pContributionId)))
+		{
+			printf("Memory copy error.\n");
+			return 1;
+		}
+	}
+
+	pal_MutexUnlock(iotaState.mutexHandle);
+	error = lims_SendStandAloneMessage(iotaState.limsHandle, &sendMessg, &pCallId);
+	pal_MutexLock(iotaState.mutexHandle);
+	if (error != LIMS_NO_ERROR)
+	{
+		printf("lims_SendStandAloneMessage() failed.\n");
+	}
+	else
+	{
+		printf("lims_SendStandAloneMessage() success.\n");
+	}
+	if (pCallId)
+	{
+		printf("Call id: %s \n", pCallId);
+		pal_MemoryFree((void**)&pCallId);
+	}
+
+	pal_MutexUnlock(iotaState.mutexHandle);
+	return error;
+}
+
+
