@@ -405,172 +405,151 @@ COMPACT DISK ARE SUBJECT TO THE LICENSE AGREEMENT ACCOMPANYING THE COMPACT DISK.
 	 }
  }
  
- EMSCRIPTEN_KEEPALIVE unsigned int iota_test_init
- (
-	 void
- )
- {
-	 pal_MutexLock(iotaState.mutexHandle);
-	 unsigned int error = LIMS_NO_ERROR;
-	 lims_ConfigStruct config;
-	 lims_CallbackStruct callback;
-	 char *pLocalIp = NULL;
-	 int signalerror = 0;
- 
-	 memset(&config, 0, sizeof(lims_ConfigStruct));
-	 memset(&callback, 0, sizeof(lims_CallbackStruct));
- 
-	 iota_test_Setup();
-	 
-	 printf("Calling lims_Init()\n");
- 
-	 config.pal = iotaState.palLimsInstance;
-	 config.logHandle = iotaState.logHandle;
- 
-	 // setting default channel is TCP only. actual configuration options read from config ini file.
-	 config.bEnableTcp = Enum_FALSE;
-	 config.bEnableUdp = Enum_TRUE;
- 
-	 strcpy(config.pHomeDomain, "ecrio.com");
-	 strcpy(config.pPassword, "ecrio@123");
-	 strcpy(config.pPrivateIdentity, "1111@ecrio.com");
-	 strcpy(config.pPublicIdentity, "sip:1111@ecrio.com");
- 
-	 strcpy(config.pUserAgent, "Ecrio-iota-Client/V1.0");
-	 printf("After strcpy config.pUserAgent. Line No:384\n");
-	 config.uRegExpireInterval = 36000;
-	 config.bSubscribeRegEvent = false;
-	 config.bUnSubscribeRegEvent = false;
-	 printf("After config.bUnsubcriberegEvent Line No:388\n");
-	 config.eAlgorithm = EcrioSipAuthAlgorithmMD5;
-	 strcpy(config.pDeviceId, "01437600-003868-4");
-	 config.pOOMObject = default_oom_GetObject();
-	 printf("After config.pOOMObject. Line No:392\n");
-	 config.uMtuSize = 1300;
-	 strcpy(config.pPANI, "3GPP-E-UTRAN-FDD;utran-cell-id-3gpp=310410000b0038000");
- 
-	 config.bIsRelayEnabled = Enum_FALSE;
-	 config.pRelayServerIP = NULL;
-	 config.uRelayServerPort = 2855;
- 
-	 iotaState.bIsFileSender = false;
-	 printf("After iotaState.bIsFileSender. Line No:401\n");
- 
-	 strcpy(iotaState.calleeNumber, "sip:+14087770002@ecrio.com");
-	 strcpy(iotaState.message, "initial string");
- 
-	 //config.cpm.pUsername = config.pPublicIdentity;
-	 callback.pLimsCallback = limsCallback;
-	 callback.pLimsGetPropertyCallback = NULL;
-	 callback.pContext = NULL;
-	 callback.pUCEPropertyCallback = NULL;
-	 printf("After callback.pUCEPropertyCallback. Line No:411\n");
-	 pal_MutexUnlock(iotaState.mutexHandle);
-	 iotaState.limsHandle = lims_Init(&config, &callback, &error);
-	 pal_MutexLock(iotaState.mutexHandle);
-	 if (iotaState.limsHandle != NULL)
-	 {
-		 lims_NetworkConnectionStruct network;
-		 memset(&network, 0, sizeof(lims_NetworkConnectionStruct));
-		 printf("Inside If block. After memset Line No:419\n");
-		 network.uNoOfRemoteIps = 1;
-		 network.ppRemoteIPs = (char **)calloc(1, sizeof(char *));
-		 strcpy(network.ppRemoteIPs[0], "192.168.56.1");
-		 network.uRemotePort = 5060;
-		 network.pLocalIp = NULL;
-		 network.uLocalPort = 0;
-		 printf("After network configs. Line No:426\n");
- 
-		 printf("RemoteIP[0]: %s\n", network.ppRemoteIPs[0]);
-		 printf("LocalIp: %s\n", network.pLocalIp);
- 
-		 network.eIPType = lims_Network_IP_Type_V4;
- 
-		 printf("Calling lims_NetworkStateChange()\n");
-		 network.uStatus = lims_Network_Status_Success;
-		 printf("After network.uStatus. Line No:435\n");
-		 pal_MutexUnlock(iotaState.mutexHandle);
-		 error = lims_NetworkStateChange(iotaState.limsHandle, lims_Network_PDN_Type_IMS, lims_Network_Connection_Type_LTE, &network);
-		 pal_MutexLock(iotaState.mutexHandle);
-		 if (error != LIMS_NO_ERROR)
-		 {printf("Inside another if block if error!=LIMS_NO_ERROR. Line No:440\n");
-			 printf("lims_NetworkStateChange failed \n");
-		 }
-		 printf("Before cleanup block. Line No:443\n");
-		 Cleanup :
- 
-				 // Release memory consumed by ini handler for networking.
-				 if (network.ppRemoteIPs != NULL)
-				 {printf("Inside another if block if network.ppRemoteIPs!=NULL. Line No:448\n");
-					 unsigned int i;
- 
-					 for (i = 0; i < network.uNoOfRemoteIps; ++i)
-					 {printf("Inside for loop. Line No:452\n");
-						 if (network.ppRemoteIPs[i])
-						 {printf("Inside if block inside for loop. Line No:454\n");
-							 free(network.ppRemoteIPs[i]);
-						 }
-					 }
- 
-					 free(network.ppRemoteIPs);
-				 }
-	 }
- 
-	 // Release memory consumed by ini handler for configuration.
-	 if (config.pHomeDomain)
-	 {
-		 free(config.pHomeDomain);
-	 }
- 
-	 if (config.pPassword)
-	 {
-		 free(config.pPassword);
-	 }
- 
-	 if (config.pPrivateIdentity)
-	 {
-		 free(config.pPrivateIdentity);
-	 }
- 
-	 if (config.pPublicIdentity)
-	 {
-		 free(config.pPublicIdentity);
-	 }
- 
-	 if (config.pUserAgent)
-	 {
-		 free(config.pUserAgent);
-	 }
- 
-	 if (config.pDeviceId)
-	 {
-		 free(config.pDeviceId);
-	 }
- 
-	 if (config.pDisplayName)
-	 {
-		 free(config.pDisplayName);
-	 }
- 
-	 if (config.pPANI)
-	 {
-		 free(config.pPANI);
-	 }
- 
- 
-	 if (config.pRelayServerIP)
-	 {
-		 free(config.pRelayServerIP);
-	 }
- 
-	 if (config.pTLSCertificate)
-	 {
-		 free(config.pTLSCertificate);
-	 }
-	 printf("After releasing memory. Line No:514\n");
-	 pal_MutexUnlock(iotaState.mutexHandle);
-	 return error;
- }
+ EMSCRIPTEN_KEEPALIVE unsigned int iota_test_init(void)
+{
+    printf("[INIT] Entered iota_test_init()\n");
+    pal_MutexLock(iotaState.mutexHandle);
+    unsigned int error = LIMS_NO_ERROR;
+    lims_ConfigStruct config;
+    lims_CallbackStruct callback;
+
+    memset(&config, 0, sizeof(lims_ConfigStruct));
+    memset(&callback, 0, sizeof(lims_CallbackStruct));
+
+    iota_test_Setup();
+    printf("[INIT] Called iota_test_Setup()\n");
+
+    config.pal = iotaState.palLimsInstance;
+    config.logHandle = iotaState.logHandle;
+
+    config.bEnableTcp = Enum_FALSE;
+    config.bEnableUdp = Enum_TRUE;
+
+    // Allocate and set strings
+    config.pHomeDomain = strdup("ecrio.com");
+    config.pPassword = strdup("ecrio@123");
+    config.pPrivateIdentity = strdup("1111@ecrio.com");
+    config.pPublicIdentity = strdup("sip:1111@ecrio.com");
+    config.pUserAgent = strdup("Ecrio-iota-Client/V1.0");
+    config.pDeviceId = strdup("01437600-003868-4");
+    config.pPANI = strdup("3GPP-E-UTRAN-FDD;utran-cell-id-3gpp=310410000b0038000");
+
+    if (!config.pHomeDomain || !config.pPassword || !config.pPrivateIdentity ||
+        !config.pPublicIdentity || !config.pUserAgent || !config.pDeviceId || !config.pPANI)
+    {
+        printf("[ERROR] Failed to allocate memory for config strings\n");
+        pal_MutexUnlock(iotaState.mutexHandle);
+        return 999;
+    }
+
+    config.uRegExpireInterval = 36000;
+    config.bSubscribeRegEvent = false;
+    config.bUnSubscribeRegEvent = false;
+    config.eAlgorithm = EcrioSipAuthAlgorithmMD5;
+    config.pOOMObject = default_oom_GetObject();
+    config.bIsRelayEnabled = Enum_FALSE;
+    config.pRelayServerIP = NULL;
+    config.uRelayServerPort = 2855;
+
+    printf("[CONFIG] Completed configuration setup\n");
+
+    iotaState.bIsFileSender = false;
+    strcpy(iotaState.calleeNumber, "sip:+14087770002@ecrio.com");
+    strcpy(iotaState.message, "initial string");
+
+    callback.pLimsCallback = limsCallback;
+    callback.pLimsGetPropertyCallback = NULL;
+    callback.pContext = NULL;
+    callback.pUCEPropertyCallback = NULL;
+
+    printf("[CONFIG] Calling lims_Init()\n");
+    pal_MutexUnlock(iotaState.mutexHandle);
+    iotaState.limsHandle = lims_Init(&config, &callback, &error);
+    pal_MutexLock(iotaState.mutexHandle);
+
+    if (iotaState.limsHandle != NULL)
+    {
+        printf("[LIMS] lims_Init successful\n");
+        lims_NetworkConnectionStruct network;
+        memset(&network, 0, sizeof(lims_NetworkConnectionStruct));
+
+        network.uNoOfRemoteIps = 1;
+        network.ppRemoteIPs = (char **)calloc(1, sizeof(char *));
+        if (!network.ppRemoteIPs)
+        {
+            printf("[ERROR] Failed to allocate ppRemoteIPs\n");
+            pal_MutexUnlock(iotaState.mutexHandle);
+            return 998;
+        }
+
+        network.ppRemoteIPs[0] = (char *)malloc(strlen("192.168.56.1") + 1);
+        if (!network.ppRemoteIPs[0])
+        {
+            printf("[ERROR] Failed to allocate IP string\n");
+            free(network.ppRemoteIPs);
+            pal_MutexUnlock(iotaState.mutexHandle);
+            return 997;
+        }
+
+        strcpy(network.ppRemoteIPs[0], "192.168.56.1");
+        network.uRemotePort = 5060;
+        network.pLocalIp = NULL;
+        network.uLocalPort = 0;
+        network.eIPType = lims_Network_IP_Type_V4;
+        network.uStatus = lims_Network_Status_Success;
+
+        printf("[NETWORK] Calling lims_NetworkStateChange()\n");
+
+        pal_MutexUnlock(iotaState.mutexHandle);
+        error = lims_NetworkStateChange(
+            iotaState.limsHandle,
+            lims_Network_PDN_Type_IMS,
+            lims_Network_Connection_Type_LTE,
+            &network
+        );
+        pal_MutexLock(iotaState.mutexHandle);
+
+        if (error != LIMS_NO_ERROR)
+        {
+            printf("[ERROR] lims_NetworkStateChange failed with error code: %u\n", error);
+        }
+
+        // Clean up network memory
+        if (network.ppRemoteIPs)
+        {
+            for (unsigned int i = 0; i < network.uNoOfRemoteIps; ++i)
+            {
+                if (network.ppRemoteIPs[i])
+                {
+                    free(network.ppRemoteIPs[i]);
+                }
+            }
+            free(network.ppRemoteIPs);
+        }
+    }
+    else
+    {
+        printf("[ERROR] lims_Init failed, handle is NULL\n");
+    }
+
+    // Free config memory
+    if (config.pHomeDomain) free(config.pHomeDomain);
+    if (config.pPassword) free(config.pPassword);
+    if (config.pPrivateIdentity) free(config.pPrivateIdentity);
+    if (config.pPublicIdentity) free(config.pPublicIdentity);
+    if (config.pUserAgent) free(config.pUserAgent);
+    if (config.pDeviceId) free(config.pDeviceId);
+    if (config.pDisplayName) free(config.pDisplayName);
+    if (config.pPANI) free(config.pPANI);
+    if (config.pRelayServerIP) free(config.pRelayServerIP);
+    if (config.pTLSCertificate) free(config.pTLSCertificate);
+
+    printf("[CLEANUP] Freed configuration memory\n");
+    pal_MutexUnlock(iotaState.mutexHandle);
+    printf("[INIT] Exiting iota_test_init() with error = %u\n", error);
+    return error;
+}
+
  
  EMSCRIPTEN_KEEPALIVE unsigned int iota_test_deinit
  (
