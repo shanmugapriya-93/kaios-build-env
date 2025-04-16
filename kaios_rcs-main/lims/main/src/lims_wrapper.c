@@ -105,7 +105,9 @@ COMPACT DISK ARE SUBJECT TO THE LICENSE AGREEMENT ACCOMPANYING THE COMPACT DISK.
  
  } iotaTestStateStruct;
  #endif
- 
+ PALINSTANCE default_pal_GetObject(void);
+LOGHANDLE default_log_GetObject(void);
+
  iotaTestStateStruct iotaState;
  
  
@@ -406,7 +408,8 @@ COMPACT DISK ARE SUBJECT TO THE LICENSE AGREEMENT ACCOMPANYING THE COMPACT DISK.
 	 }
  }
 
- EMSCRIPTEN_KEEPALIVE void iota_test_setup_env(void) {
+ EMSCRIPTEN_KEEPALIVE
+void iota_test_setup_env(void) {
     printf("[SETUP] iota_test_setup_env() called\n");
 
     memset(&iotaState, 0, sizeof(iotaTestStateStruct));
@@ -428,7 +431,19 @@ COMPACT DISK ARE SUBJECT TO THE LICENSE AGREEMENT ACCOMPANYING THE COMPACT DISK.
     }
 
     iotaState.palLimsInstance = palInstance;
+
     printf("[SETUP] Mutex, log, and palLimsInstance initialized\n");
+}
+
+// Stub implementation for PAL and LOG accessors (can be replaced with real ones)
+PALINSTANCE default_pal_GetObject(void) {
+    // Return actual PAL instance if available
+    return NULL;
+}
+
+LOGHANDLE default_log_GetObject(void) {
+    // Return actual LOG handle if available
+    return NULL;
 }
 
  
@@ -838,13 +853,6 @@ COMPACT DISK ARE SUBJECT TO THE LICENSE AGREEMENT ACCOMPANYING THE COMPACT DISK.
 	 pal_MutexUnlock(iotaState.mutexHandle);
 	 return error;
  }
- // Add these at the top or bottom of lims_wrapper.c
-PALINSTANCE default_pal_GetObject(void) {
-    return NULL;  // Return NULL if you don't need an actual instance
-}
-
-LOGHANDLE default_log_GetObject(void) {
-    return NULL;  // Return NULL if logging is optional
-}
+ 
 
  
