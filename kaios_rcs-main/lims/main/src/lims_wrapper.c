@@ -426,15 +426,8 @@ COMPACT DISK ARE SUBJECT TO THE LICENSE AGREEMENT ACCOMPANYING THE COMPACT DISK.
         return;
     }
 
-    // Initialize log object
-    iotaState.logHandle = default_log_GetObject();
-    if (!iotaState.logHandle) {
-        printf("[ERROR] Failed to get log object!\n");
-        return;
-    }
-
-    // Initialize PAL instance
-    iotaState.palLimsInstance = palInstance;  // Assuming palInstance is the correct object
+	iotaState.logHandle = get_log_handle();  // Use the correct function
+    iotaState.palLimsInstance = palInstance;  // Set the palInstance from the previous function
 
     printf("[SETUP] Mutex, log, and palLimsInstance initialized\n");
 }
