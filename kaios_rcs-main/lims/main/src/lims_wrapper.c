@@ -53,7 +53,6 @@ COMPACT DISK ARE SUBJECT TO THE LICENSE AGREEMENT ACCOMPANYING THE COMPACT DISK.
  #include <emscripten.h>
  
  #include "EcrioPAL.h"
- #include "EcrioLog.h"
  #include "lims.h"
  
  #include "lims_wrapper.h"
