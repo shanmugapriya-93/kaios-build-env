@@ -405,116 +405,132 @@ void iota_test_Setup
 	}
 }
 
-EMSCRIPTEN_KEEPALIVE unsigned int iota_test_init(void)
+#include <emscripten/emscripten.h>
+
+EMSCRIPTEN_KEEPALIVE
+unsigned int iota_test_init(void)
 {
+	EM_ASM({ console.log("STEP 1: Locking mutex"); });
 	pal_MutexLock(iotaState.mutexHandle);
+
 	unsigned int error = LIMS_NO_ERROR;
 	lims_ConfigStruct config;
 	lims_CallbackStruct callback;
-	char *pLocalIp = NULL;
-	int signalerror = 0;
 
+	EM_ASM({ console.log("STEP 2: Zeroing config and callback"); });
 	memset(&config, 0, sizeof(lims_ConfigStruct));
 	memset(&callback, 0, sizeof(lims_CallbackStruct));
 
+	EM_ASM({ console.log("STEP 3: Calling iota_test_Setup"); });
 	iota_test_Setup();
 
-	printf("Calling lims_Init()\n");
-
+	EM_ASM({ console.log("STEP 4: Setting basic config fields"); });
 	config.pal = iotaState.palLimsInstance;
 	config.logHandle = iotaState.logHandle;
-
 	config.bEnableTcp = Enum_TRUE;
 	config.bEnableUdp = Enum_TRUE;
 
-	// Allocate and copy strings safely
-	config.pHomeDomain = strdup("ecrio.com");
-	config.pPassword = strdup("ecrio@123");
-	config.pPrivateIdentity = strdup("1111@ecrio.com");
-	config.pPublicIdentity = strdup("sip:1111@ecrio.com");
-	config.pUserAgent = strdup("Ecrio-iota-Client/V1.0");
-	config.pDeviceId = strdup("01437600-003868-4");
-	config.pPANI = strdup("3GPP-E-UTRAN-FDD;utran-cell-id-3gpp=310410000b0038000");
+	EM_ASM({ console.log("STEP 5: Allocating config strings"); });
+	if (!(config.pHomeDomain = strdup("ecrio.com")) ||
+	    !(config.pPassword = strdup("ecrio@123")) ||
+	    !(config.pPrivateIdentity = strdup("1111@ecrio.com")) ||
+	    !(config.pPublicIdentity = strdup("sip:1111@ecrio.com")) ||
+	    !(config.pUserAgent = strdup("Ecrio-iota-Client/V1.0")) ||
+	    !(config.pDeviceId = strdup("01437600-003868-4")) ||
+	    !(config.pPANI = strdup("3GPP-E-UTRAN-FDD;utran-cell-id-3gpp=310410000b0038000"))) {
+		
+		EM_ASM({ console.error("STEP 5 FAIL: Memory allocation failed"); });
+		pal_MutexUnlock(iotaState.mutexHandle);
+		return LIMS_ERROR_MEMORY;
+	}
 
+	EM_ASM({ console.log("STEP 6: Setting remaining config fields"); });
 	config.uRegExpireInterval = 36000;
 	config.bSubscribeRegEvent = false;
 	config.bUnSubscribeRegEvent = false;
 	config.eAlgorithm = EcrioSipAuthAlgorithmMD5;
 	config.pOOMObject = default_oom_GetObject();
 	config.uMtuSize = 1300;
-
 	config.bIsRelayEnabled = Enum_FALSE;
 	config.pRelayServerIP = NULL;
 	config.uRelayServerPort = 2855;
 
 	iotaState.bIsFileSender = false;
-
 	strcpy(iotaState.calleeNumber, "sip:+14087770002@ecrio.com");
 	strcpy(iotaState.message, "initial string");
 
+	EM_ASM({ console.log("STEP 7: Setting callback struct"); });
 	callback.pLimsCallback = limsCallback;
 	callback.pLimsGetPropertyCallback = NULL;
 	callback.pContext = NULL;
 	callback.pUCEPropertyCallback = NULL;
 
+	EM_ASM({ console.log("STEP 8: Unlocking mutex before lims_Init"); });
 	pal_MutexUnlock(iotaState.mutexHandle);
+
+	EM_ASM({ console.log("STEP 9: Calling lims_Init"); });
 	iotaState.limsHandle = lims_Init(&config, &callback, &error);
+	EM_ASM({ console.log("STEP 10: Returned from lims_Init"); });
+
+	if (iotaState.limsHandle == NULL) {
+		EM_ASM({ console.error("STEP 10 FAIL: lims_Init returned NULL"); });
+		goto cleanup;
+	}
+
+	EM_ASM({ console.log("STEP 11: Re-locking mutex"); });
 	pal_MutexLock(iotaState.mutexHandle);
 
-	if (iotaState.limsHandle != NULL)
-	{
-		lims_NetworkConnectionStruct network;
-		memset(&network, 0, sizeof(lims_NetworkConnectionStruct));
-		network.uNoOfRemoteIps = 1;
-
-		network.ppRemoteIPs = (char **)calloc(1, sizeof(char *));
-		if (network.ppRemoteIPs != NULL) {
-			network.ppRemoteIPs[0] = malloc(strlen("192.168.29.197") + 1);
-			if (network.ppRemoteIPs[0]) {
-				strcpy(network.ppRemoteIPs[0], "192.168.29.197");
-			}
-		}
-
+	EM_ASM({ console.log("STEP 12: Preparing network struct"); });
+	lims_NetworkConnectionStruct network;
+	memset(&network, 0, sizeof(lims_NetworkConnectionStruct));
+	network.uNoOfRemoteIps = 1;
+	network.ppRemoteIPs = (char **)calloc(1, sizeof(char *));
+	if (network.ppRemoteIPs && (network.ppRemoteIPs[0] = strdup("192.168.29.197"))) {
 		network.uRemotePort = 5060;
 		network.pLocalIp = NULL;
 		network.uLocalPort = 0;
 		network.eIPType = lims_Network_IP_Type_V4;
 		network.uStatus = lims_Network_Status_Success;
 
+		EM_ASM({ console.log("STEP 13: Calling lims_NetworkStateChange"); });
 		pal_MutexUnlock(iotaState.mutexHandle);
 		error = lims_NetworkStateChange(iotaState.limsHandle, lims_Network_PDN_Type_IMS, lims_Network_Connection_Type_LTE, &network);
 		pal_MutexLock(iotaState.mutexHandle);
 
 		if (error != LIMS_NO_ERROR) {
-			printf("lims_NetworkStateChange failed\n");
+			EM_ASM({ console.error("STEP 13 FAIL: lims_NetworkStateChange failed"); });
 		}
-
-		// Cleanup remote IPs
-		if (network.ppRemoteIPs != NULL) {
-			for (unsigned int i = 0; i < network.uNoOfRemoteIps; ++i) {
-				if (network.ppRemoteIPs[i]) {
-					free(network.ppRemoteIPs[i]);
-				}
-			}
-			free(network.ppRemoteIPs);
-		}
+	} else {
+		EM_ASM({ console.error("STEP 12 FAIL: Memory allocation for remote IPs failed"); });
+		error = LIMS_ERROR_MEMORY;
 	}
 
-	// Release all config fields if allocated
+	EM_ASM({ console.log("STEP 14: Cleaning up network IPs"); });
+	if (network.ppRemoteIPs) {
+		if (network.ppRemoteIPs[0]) free(network.ppRemoteIPs[0]);
+		free(network.ppRemoteIPs);
+	}
+
+	EM_ASM({ console.log("STEP 15: Unlocking final mutex"); });
+	pal_MutexUnlock(iotaState.mutexHandle);
+
+cleanup:
+	EM_ASM({ console.log("STEP 16: Cleaning up config strings"); });
 	if (config.pHomeDomain) free(config.pHomeDomain);
 	if (config.pPassword) free(config.pPassword);
 	if (config.pPrivateIdentity) free(config.pPrivateIdentity);
 	if (config.pPublicIdentity) free(config.pPublicIdentity);
 	if (config.pUserAgent) free(config.pUserAgent);
 	if (config.pDeviceId) free(config.pDeviceId);
-	if (config.pDisplayName) free(config.pDisplayName);  // Only if used
 	if (config.pPANI) free(config.pPANI);
 	if (config.pRelayServerIP) free(config.pRelayServerIP);
+	if (config.pDisplayName) free(config.pDisplayName);
 	if (config.pTLSCertificate) free(config.pTLSCertificate);
 
-	pal_MutexUnlock(iotaState.mutexHandle);
+	EM_ASM({ console.log("STEP 17: Returning from iota_test_init with error code:", $0); }, error);
 	return error;
 }
+
 
 
 EMSCRIPTEN_KEEPALIVE unsigned int iota_test_deinit
