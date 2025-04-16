@@ -354,98 +354,90 @@ EMSCRIPTEN_KEEPALIVE void limsCallback
 	}
 }
 
-void iota_test_Setup
-(
-	void
-)
-{
-	unsigned int error = KPALErrorNone;
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <emscripten/emscripten.h>
+#include "lims.h"
+#include "pal.h"
 
-	iotaState.limsHandle = NULL;
+extern iotaTestStateStruct iotaState;
+extern void* default_oom_GetObject(void);
+extern void limsCallback(void);
 
-	iotaState.logHandle = pal_LogInit((void *)"iota_test.log", KLogOutputStdOut, 0x000003B3, KLogLevel_All, KLogComponent_All, KLogType_All);
+// ✅ Proper setup
+void iota_test_Setup(void) {
+    unsigned int error = KPALErrorNone;
+    iotaState.limsHandle = NULL;
 
-	// Initialize the PAL, get the PAL instance.
-	error = pal_Init(iotaState.logHandle, &iotaState.palLimsInstance);
-	if (error != KPALErrorNone)
-	{
-		printf("❌ Could not initialize the PAL instance! Error code: %u\n", error);
+    iotaState.logHandle = pal_LogInit(
+        (void *)"iota_test.log",
+        KLogOutputStdOut,
+        0x000003B3,
+        KLogLevel_All,
+        KLogComponent_All,
+        KLogType_All
+    );
 
-    if (iotaState.logHandle != NULL)
-    {
-        // Deinitialize the logging instance.
-        pal_LogDeinit(&iotaState.logHandle);
+    error = pal_Init(iotaState.logHandle, &iotaState.palLimsInstance);
+    if (error != KPALErrorNone) {
+        printf("❌ Could not initialize PAL instance! Error code: %u\n", error);
+        if (iotaState.logHandle != NULL) {
+            pal_LogDeinit(&iotaState.logHandle);
+        }
+        return;
     }
 
-    return;
-}
-else
-{
     printf("✅ PAL instance initialized successfully: %p\n", iotaState.palLimsInstance);
     EM_ASM({ console.log("✅ PAL instance initialized in WASM:", $0); }, iotaState.palLimsInstance);
+
+    error = pal_MutexCreate(iotaState.palLimsInstance, &iotaState.mutexHandle);
+    if (error != KPALErrorNone) {
+        printf("❌ Could not create mutex!\n");
+        pal_Deinit(iotaState.palLimsInstance);
+        if (iotaState.logHandle != NULL) {
+            pal_LogDeinit(&iotaState.logHandle);
+        }
+        return;
+    }
+
+    error = pal_SocketSetDeviceName(iotaState.palLimsInstance, iotaState.localInterface);
+    if (error != KPALErrorNone) {
+        printf("❌ Failed to set device name!\n");
+        pal_Deinit(iotaState.palLimsInstance);
+        if (iotaState.logHandle != NULL) {
+            pal_LogDeinit(&iotaState.logHandle);
+        }
+        return;
+    }
 }
 
-	error = pal_MutexCreate(iotaState.palLimsInstance, &iotaState.mutexHandle);
-	if (error != KPALErrorNone)
-	{
-		printf("Could not initialize the PAL instance!\n");
-
-		pal_Deinit(iotaState.palLimsInstance);
-		if (iotaState.logHandle != NULL)
-		{
-			// Deinitialize the logging instance.
-			pal_LogDeinit(&iotaState.logHandle);
-		}
-
-		return;
-	}
-
-	error = pal_SocketSetDeviceName(iotaState.palLimsInstance, iotaState.localInterface);
-	if (error != KPALErrorNone)
-	{
-		pal_Deinit(iotaState.palLimsInstance);
-		if (iotaState.logHandle != NULL)
-		{
-			// Deinitialize the logging instance.
-			pal_LogDeinit(&iotaState.logHandle);
-		}
-
-		return;
-
 EMSCRIPTEN_KEEPALIVE
-unsigned int iota_test_init(void)
-{
+unsigned int iota_test_init(void) {
     EM_ASM({ console.log("STEP 1: Locking mutex"); });
-    pal_MutexLock(iotaState.mutexHandle);  // Locking the mutex
+    pal_MutexLock(iotaState.mutexHandle);
 
     unsigned int error = LIMS_NO_ERROR;
     lims_ConfigStruct config;
     lims_CallbackStruct callback;
+    memset(&config, 0, sizeof(config));
+    memset(&callback, 0, sizeof(callback));
 
-    // Step 2: Zeroing config and callback structs
-    EM_ASM({ console.log("STEP 2: Zeroing config and callback"); });
-    memset(&config, 0, sizeof(lims_ConfigStruct));
-    memset(&callback, 0, sizeof(lims_CallbackStruct));
-
-    // Step 3: Calling iota_test_Setup
     EM_ASM({ console.log("STEP 3: Calling iota_test_Setup"); });
-    iota_test_Setup();  // Perform setup actions (simulated for now)
+    iota_test_Setup();
 
-    // Step 4: Setting basic config fields
     EM_ASM({ console.log("STEP 4: Setting basic config fields"); });
-	if (iotaState.palLimsInstance == NULL) {
-		EM_ASM({ console.error("❌ iotaState.palLimsInstance is NULL before setting config.pal"); });
-		pal_MutexUnlock(iotaState.mutexHandle);
-		return 9999;  // or LIMS_ERROR_INIT_FAILED
-	}
-	
-	printf("✔ PAL instance is valid: %p\n", iotaState.palLimsInstance);
+    if (iotaState.palLimsInstance == NULL) {
+        EM_ASM({ console.error("❌ PAL instance is NULL"); });
+        pal_MutexUnlock(iotaState.mutexHandle);
+        return 9999;
+    }
+
     config.pal = iotaState.palLimsInstance;
     config.logHandle = iotaState.logHandle;
     config.bEnableTcp = Enum_TRUE;
     config.bEnableUdp = Enum_TRUE;
 
-    // Step 5: Allocating config strings with error handling
     EM_ASM({ console.log("STEP 5: Allocating config strings"); });
     if (!(config.pHomeDomain = strdup("ecrio.com")) ||
         !(config.pPassword = strdup("ecrio@123")) ||
@@ -454,93 +446,67 @@ unsigned int iota_test_init(void)
         !(config.pUserAgent = strdup("Ecrio-iota-Client/V1.0")) ||
         !(config.pDeviceId = strdup("01437600-003868-4")) ||
         !(config.pPANI = strdup("3GPP-E-UTRAN-FDD;utran-cell-id-3gpp=310410000b0038000"))) {
-
-        EM_ASM({ console.error("STEP 5 FAIL: Memory allocation failed"); });
-        pal_MutexUnlock(iotaState.mutexHandle);  // Unlock mutex on error
+        EM_ASM({ console.error("❌ Memory allocation failed"); });
+        pal_MutexUnlock(iotaState.mutexHandle);
         return LIMS_ERROR_MEMORY;
     }
 
-    // Step 6: Setting remaining config fields
-    EM_ASM({ console.log("STEP 6: Setting remaining config fields"); });
     config.uRegExpireInterval = 36000;
     config.bSubscribeRegEvent = false;
     config.bUnSubscribeRegEvent = false;
     config.eAlgorithm = EcrioSipAuthAlgorithmMD5;
-    config.pOOMObject = default_oom_GetObject();  // Assume default_oom_GetObject() is valid
+    config.pOOMObject = default_oom_GetObject();
     config.uMtuSize = 1300;
     config.bIsRelayEnabled = Enum_FALSE;
-    config.pRelayServerIP = NULL;
-    config.uRelayServerPort = 2855;
 
     iotaState.bIsFileSender = false;
     strcpy(iotaState.calleeNumber, "sip:+14087770002@ecrio.com");
     strcpy(iotaState.message, "initial string");
 
-    // Step 7: Setting callback struct
-    EM_ASM({ console.log("STEP 7: Setting callback struct"); });
-    callback.pLimsCallback = limsCallback;  // Assuming limsCallback is defined elsewhere
-    callback.pLimsGetPropertyCallback = NULL;
+    EM_ASM({ console.log("STEP 7: Setting callbacks"); });
+    callback.pLimsCallback = limsCallback;
     callback.pContext = NULL;
-    callback.pUCEPropertyCallback = NULL;
 
-    // Step 8: Unlocking mutex before calling lims_Init
-    EM_ASM({ console.log("STEP 8: Unlocking mutex before lims_Init"); });
     pal_MutexUnlock(iotaState.mutexHandle);
 
-    // Step 9: Calling lims_Init
     EM_ASM({ console.log("STEP 9: Calling lims_Init"); });
     iotaState.limsHandle = lims_Init(&config, &callback, &error);
-    EM_ASM({ console.log("STEP 10: Returned from lims_Init"); });
+    EM_ASM({ console.log("STEP 10: lims_Init returned"); });
 
     if (iotaState.limsHandle == NULL) {
-        EM_ASM({ console.error("STEP 10 FAIL: lims_Init returned NULL"); });
-        goto cleanup;  // Jump to cleanup if initialization fails
+        EM_ASM({ console.error("❌ lims_Init returned NULL"); });
+        goto cleanup;
     }
 
-    // Step 11: Re-locking mutex
-    EM_ASM({ console.log("STEP 11: Re-locking mutex"); });
     pal_MutexLock(iotaState.mutexHandle);
-
-    // Step 12: Preparing network struct
-    EM_ASM({ console.log("STEP 12: Preparing network struct"); });
     lims_NetworkConnectionStruct network;
-    memset(&network, 0, sizeof(lims_NetworkConnectionStruct));
+    memset(&network, 0, sizeof(network));
     network.uNoOfRemoteIps = 1;
     network.ppRemoteIPs = (char **)calloc(1, sizeof(char *));
     if (network.ppRemoteIPs && (network.ppRemoteIPs[0] = strdup("192.168.29.197"))) {
         network.uRemotePort = 5060;
-        network.pLocalIp = NULL;
-        network.uLocalPort = 0;
         network.eIPType = lims_Network_IP_Type_V4;
         network.uStatus = lims_Network_Status_Success;
 
-        EM_ASM({ console.log("STEP 13: Calling lims_NetworkStateChange"); });
         pal_MutexUnlock(iotaState.mutexHandle);
         error = lims_NetworkStateChange(iotaState.limsHandle, lims_Network_PDN_Type_IMS, lims_Network_Connection_Type_LTE, &network);
         pal_MutexLock(iotaState.mutexHandle);
-
         if (error != LIMS_NO_ERROR) {
-            EM_ASM({ console.error("STEP 13 FAIL: lims_NetworkStateChange failed"); });
+            EM_ASM({ console.error("❌ lims_NetworkStateChange failed"); });
         }
     } else {
-        EM_ASM({ console.error("STEP 12 FAIL: Memory allocation for remote IPs failed"); });
+        EM_ASM({ console.error("❌ Memory allocation for IP failed"); });
         error = LIMS_ERROR_MEMORY;
     }
 
-    // Step 14: Cleaning up network IPs
-    EM_ASM({ console.log("STEP 14: Cleaning up network IPs"); });
     if (network.ppRemoteIPs) {
         if (network.ppRemoteIPs[0]) free(network.ppRemoteIPs[0]);
         free(network.ppRemoteIPs);
     }
 
-    // Step 15: Unlocking final mutex
-    EM_ASM({ console.log("STEP 15: Unlocking final mutex"); });
     pal_MutexUnlock(iotaState.mutexHandle);
 
 cleanup:
-    // Step 16: Cleaning up config strings
-    EM_ASM({ console.log("STEP 16: Cleaning up config strings"); });
     if (config.pHomeDomain) free(config.pHomeDomain);
     if (config.pPassword) free(config.pPassword);
     if (config.pPrivateIdentity) free(config.pPrivateIdentity);
@@ -552,267 +518,68 @@ cleanup:
     if (config.pDisplayName) free(config.pDisplayName);
     if (config.pTLSCertificate) free(config.pTLSCertificate);
 
-    // Returning from the function with error code
-    EM_ASM({ console.log("STEP 17: Returning from iota_test_init with error code:", $0); }, error);
+    EM_ASM({ console.log("✅ iota_test_init completed with code:", $0); }, error);
     return error;
 }
 
+EMSCRIPTEN_KEEPALIVE
+unsigned int iota_test_deinit(void) {
+    unsigned int error = LIMS_NO_ERROR;
 
+    if (iotaState.limsHandle != NULL) {
+        printf("Calling lims_Deinit()\n");
+        error = lims_Deinit(&iotaState.limsHandle);
+        if (error != LIMS_NO_ERROR) {
+            printf("lims_Deinit() failed: %d\n", error);
+        } else {
+            iotaState.limsHandle = NULL;
+        }
+    }
 
-EMSCRIPTEN_KEEPALIVE unsigned int iota_test_deinit
-(
-	void
-)
-{
-	unsigned int error = LIMS_NO_ERROR;
+    if (iotaState.pSessionId) pal_MemoryFree((void **)&iotaState.pSessionId);
+    if (iotaState.pGroupSessionId) pal_MemoryFree((void **)&iotaState.pGroupSessionId);
+    if (iotaState.pReferId) pal_MemoryFree((void **)&iotaState.pReferId);
 
-	if (iotaState.limsHandle != NULL)
-	{
-		printf("Calling lims_Deinit()\n");
-
-		error = lims_Deinit(&iotaState.limsHandle);
-		if (error != LIMS_NO_ERROR)
-		{
-			printf("lims_Deinit()- failed with error:%d\n", error);
-		}
-		else
-		{
-			iotaState.limsHandle = NULL;
-		}
-	}
-	else
-	{
-		printf("Calling already deinitialized\n");
-	}
-
-	if (iotaState.pSessionId != NULL)
-	{
-		pal_MemoryFree((void**)&iotaState.pSessionId);
-	}
-	if (iotaState.pGroupSessionId != NULL)
-	{
-		pal_MemoryFree((void**)&iotaState.pGroupSessionId);
-	}
-	if (iotaState.pReferId != NULL)
-	{
-		pal_MemoryFree((void**)&iotaState.pReferId);
-	}
-
-	return error;
+    return error;
 }
 
+EMSCRIPTEN_KEEPALIVE
+unsigned int iota_test_register(void) {
+    pal_MutexLock(iotaState.mutexHandle);
+    unsigned int error = LIMS_NO_ERROR;
+    unsigned int uFeatures = lims_Feature_CPM_PagerMode | lims_Feature_CPM_LargeMode | lims_Feature_CPM_Chat | lims_Feature_CPM_GeoLocation | lims_Feature_CPM_IMDN_Aggregation;
 
-EMSCRIPTEN_KEEPALIVE unsigned int iota_test_register
-(
-	void
-)
-{
-	pal_MutexLock(iotaState.mutexHandle);
-	unsigned int error = LIMS_NO_ERROR;
-	unsigned int uFeatures = lims_Feature_CPM_PagerMode | lims_Feature_CPM_LargeMode | lims_Feature_CPM_Chat | lims_Feature_CPM_GeoLocation | lims_Feature_CPM_IMDN_Aggregation;
-	//	unsigned int uFeatures = lims_Feature_CPM_PagerMode;
+    if (iotaState.limsHandle != NULL) {
+        lims_RegisterStruct registerStruct;
+        registerStruct.pIPsecParams = NULL;
 
-	if (iotaState.limsHandle != NULL)
-	{
-		lims_RegisterStruct registerStruct;
+        printf("Calling lims_Register()\n");
+        pal_MutexUnlock(iotaState.mutexHandle);
+        error = lims_Register(iotaState.limsHandle, uFeatures, &registerStruct);
+        pal_MutexLock(iotaState.mutexHandle);
 
-		registerStruct.pIPsecParams = NULL;
-		printf("Calling lims_Register()\n");
+        if (error != LIMS_NO_ERROR) {
+            printf("lims_Register() failed with code %u\n", error);
+        }
+    }
 
-		pal_MutexUnlock(iotaState.mutexHandle);
-		error = lims_Register(iotaState.limsHandle, uFeatures, &registerStruct);
-		pal_MutexLock(iotaState.mutexHandle);
-		if (error != LIMS_NO_ERROR)
-		{
-			printf("lims_Register() failed\n");
-		}
-	}
-
-	pal_MutexUnlock(iotaState.mutexHandle);
-	return error;
+    pal_MutexUnlock(iotaState.mutexHandle);
+    return error;
 }
 
+EMSCRIPTEN_KEEPALIVE
+unsigned int iota_test_deregister(void) {
+    pal_MutexLock(iotaState.mutexHandle);
+    unsigned int error = LIMS_NO_ERROR;
 
-EMSCRIPTEN_KEEPALIVE unsigned int iota_test_deregister
-(
-	void
-)
-{
-	pal_MutexLock(iotaState.mutexHandle);
-	unsigned int error = LIMS_NO_ERROR;
+    if (iotaState.limsHandle != NULL) {
+        printf("Calling lims_Deregister()\n");
+        error = lims_Deregister(iotaState.limsHandle);
+        if (error != LIMS_NO_ERROR) {
+            printf("lims_Deregister() failed: %u\n", error);
+        }
+    }
 
-	if (iotaState.limsHandle != NULL)
-	{
-		printf("Calling lims_Deregister()\n");
-
-		pal_MutexUnlock(iotaState.mutexHandle);
-		error = lims_Deregister(iotaState.limsHandle);
-		pal_MutexLock(iotaState.mutexHandle);
-		if (error != LIMS_NO_ERROR)
-		{
-			printf("lims_Deregister() failed\n");
-		}
-	}
-
-	pal_MutexUnlock(iotaState.mutexHandle);
-	return error;
+    pal_MutexUnlock(iotaState.mutexHandle);
+    return error;
 }
-
-EMSCRIPTEN_KEEPALIVE void iota_test_getRandomStringHex
-(
-	unsigned char *pStr,
-	unsigned int uLength
-)
-{
-	unsigned int i = 0;
-
-	for (i = 0; i < uLength; i++)
-	{
-		*(pStr + i) = iotaState.seedHex[pal_UtilityRandomNumber() % 16];
-	}
-}
-
-
-EMSCRIPTEN_KEEPALIVE void iota_test_getContributionID(u_char* pContributionID)
-{
-	u_char tempBuf[13];
-
-	memset(tempBuf, 0, 13);
-	iota_test_getRandomStringHex(tempBuf, 8);
-	if (NULL == pal_StringNCopy(pContributionID, 64, (const u_char *)tempBuf, pal_StringLength((const u_char *)tempBuf)))
-	{
-		iota_test_printf("Memory copy error.\n");
-		return;
-	}
-	if (NULL == pal_StringNConcatenate(pContributionID, 64 - pal_StringLength((const u_char *)pContributionID), (const u_char *)"-", pal_StringLength((const u_char *)"-")))
-	{
-		iota_test_printf("Memory copy error.\n");
-		return;
-	}
-	memset(tempBuf, 0, 13);
-	iota_test_getRandomStringHex(tempBuf, 4);
-	if (NULL == pal_StringNConcatenate(pContributionID, 64 - pal_StringLength((const u_char *)pContributionID), tempBuf, pal_StringLength((const u_char *)tempBuf)))
-	{
-		iota_test_printf("Memory copy error.\n");
-		return;
-	}
-	if (NULL == pal_StringNConcatenate(pContributionID, 64 - pal_StringLength((const u_char *)pContributionID), (const u_char *)"-", pal_StringLength((const u_char *)"-")))
-	{
-		iota_test_printf("Memory copy error.\n");
-		return;
-	}
-	memset(tempBuf, 0, 13);
-	iota_test_getRandomStringHex(tempBuf, 4);
-	if (NULL == pal_StringNConcatenate(pContributionID, 64 - pal_StringLength((const u_char *)pContributionID), tempBuf, pal_StringLength(tempBuf)))
-	{
-		iota_test_printf("Memory copy error.\n");
-		return;
-	}
-	if (NULL == pal_StringNConcatenate(pContributionID, 64 - pal_StringLength((const u_char *)pContributionID), (const u_char *)"-", pal_StringLength((const u_char *)"-")))
-	{
-		iota_test_printf("Memory copy error.\n");
-		return;
-	}
-	memset(tempBuf, 0, 13);
-	iota_test_getRandomStringHex(tempBuf, 4);
-	if (NULL == pal_StringNConcatenate(pContributionID, 64 - pal_StringLength((const u_char *)pContributionID), tempBuf, pal_StringLength((const u_char *)tempBuf)))
-	{
-		iota_test_printf("Memory copy error.\n");
-		return;
-	}
-	if (NULL == pal_StringNConcatenate(pContributionID, 64 - pal_StringLength((const u_char *)pContributionID), (const u_char *)"-", pal_StringLength((const u_char *)"-")))
-	{
-		iota_test_printf("Memory copy error.\n");
-		return;
-	}
-	memset(tempBuf, 0, 13);
-	iota_test_getRandomStringHex(tempBuf, 12);
-	if (NULL == pal_StringNConcatenate(pContributionID, 64 - pal_StringLength((const u_char *)pContributionID), tempBuf, pal_StringLength(tempBuf)))
-	{
-		iota_test_printf("Memory copy error.\n");
-		return;
-	}
-}
-
-
-EMSCRIPTEN_KEEPALIVE unsigned int iota_test_SendStandAloneMessage
-(
-	char* pText
-)
-{
-	pal_MutexLock(iotaState.mutexHandle);
-	unsigned int error = LIMS_NO_ERROR;
-	lims_StandAloneMessageStruct sendMessg;
-	EcrioCPMBufferStruct text;
-	EcrioCPMConversationsIdStruct ids;
-	u_char convId[64];
-	u_char contId[64];
-	char *pCallId = NULL;
-	char imdnId[21] = { '\0' };
-
-	EcrioCPMMessageStruct message;
-
-	memset(&sendMessg, 0, sizeof(lims_StandAloneMessageStruct));
-	memset(&text, 0, sizeof(EcrioCPMBufferStruct));
-	memset(&ids, 0, sizeof(EcrioCPMConversationsIdStruct));
-	memset(&convId, 0, 64);
-	memset(&contId, 0, 64);
-	memset(&message, 0, sizeof(EcrioCPMMessageStruct));
-
-	printf("Calling lims_SendStandAloneMessage()\n");
-
-	sendMessg.pDestUri = (char *)iotaState.calleeNumber;
-
-	sendMessg.bIsChatbot = false;
-	sendMessg.bDeleteChatBotToken = false;
-
-	{
-		sendMessg.pMessage = &message;
-		sendMessg.pMessage->imdnConfig = EcrioCPMIMDispositionConfigPositiveDelivery | EcrioCPMIMDispositionConfigDisplay;
-		iota_test_getRandomString((unsigned char *)imdnId, 20);
-		sendMessg.pMessage->pIMDNMsgId = (char *)imdnId;
-
-		sendMessg.pMessage->message.pBuffer = &text;
-		sendMessg.pMessage->eContentType = EcrioCPMContentTypeEnum_Text;
-		text.pMessage = (u_char*)pText;
-		text.uMessageLen = pal_StringLength(text.pMessage);
-		sendMessg.pConvId = &ids;
-
-		iota_test_getContributionID(contId);
-		iota_test_getContributionID(convId);
-		ids.pContributionId = contId;
-		ids.pConversationId = convId;
-
-		if (NULL == pal_StringNCopy(iotaState.contID, 64, ids.pContributionId, pal_StringLength(ids.pContributionId)))
-		{
-			printf("Memory copy error.\n");
-			return 1;
-		}
-		if (NULL == pal_StringNCopy(iotaState.convID, 64, ids.pConversationId, pal_StringLength(ids.pContributionId)))
-		{
-			printf("Memory copy error.\n");
-			return 1;
-		}
-	}
-
-	pal_MutexUnlock(iotaState.mutexHandle);
-	error = lims_SendStandAloneMessage(iotaState.limsHandle, &sendMessg, &pCallId);
-	pal_MutexLock(iotaState.mutexHandle);
-	if (error != LIMS_NO_ERROR)
-	{
-		printf("lims_SendStandAloneMessage() failed.\n");
-	}
-	else
-	{
-		printf("lims_SendStandAloneMessage() success.\n");
-	}
-	if (pCallId)
-	{
-		printf("Call id: %s \n", pCallId);
-		pal_MemoryFree((void**)&pCallId);
-	}
-
-	pal_MutexUnlock(iotaState.mutexHandle);
-	return error;
-}
-
