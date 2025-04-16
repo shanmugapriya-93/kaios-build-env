@@ -408,16 +408,7 @@ LOGHANDLE default_log_GetObject(void);
 	 }
  }
 
- #include <stdio.h>
-#include <string.h>
-#include <stdint.h>  // for uintptr_t
-#include <emscripten/emscripten.h>
-#include "lims_wrapper.h"  // your header
 
-extern iotaTestStateStruct iotaState;
-
-PALINSTANCE default_pal_GetObject(void);
-LOGHANDLE default_log_GetObject(void);
 
 EMSCRIPTEN_KEEPALIVE
 void iota_test_setup_env(void) {
