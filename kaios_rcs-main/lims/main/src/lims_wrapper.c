@@ -411,19 +411,26 @@ COMPACT DISK ARE SUBJECT TO THE LICENSE AGREEMENT ACCOMPANYING THE COMPACT DISK.
 
     memset(&iotaState, 0, sizeof(iotaTestStateStruct));
 
-    // Create mutex
-    PALINSTANCE palInstance = get_pal_instance();  // Use the correct function
+    PALINSTANCE palInstance = default_pal_GetObject();
+    if (palInstance == NULL) {
+        printf("[WARN] PAL instance is NULL\n");
+    }
+
     iotaState.mutexHandle = pal_MutexCreate(palInstance, &iotaState.mutexHandle);
     if (!iotaState.mutexHandle) {
         printf("[ERROR] Failed to create mutex!\n");
         return;
     }
 
-	iotaState.logHandle = get_log_handle();  // Use the correct function
-    iotaState.palLimsInstance = palInstance;  // Set the palInstance from the previous function
+    iotaState.logHandle = default_log_GetObject();
+    if (iotaState.logHandle == NULL) {
+        printf("[WARN] Log handle is NULL\n");
+    }
 
+    iotaState.palLimsInstance = palInstance;
     printf("[SETUP] Mutex, log, and palLimsInstance initialized\n");
 }
+
  
  EMSCRIPTEN_KEEPALIVE unsigned int iota_test_init(void)
 {
@@ -831,5 +838,13 @@ COMPACT DISK ARE SUBJECT TO THE LICENSE AGREEMENT ACCOMPANYING THE COMPACT DISK.
 	 pal_MutexUnlock(iotaState.mutexHandle);
 	 return error;
  }
- 
+ // Add these at the top or bottom of lims_wrapper.c
+PALINSTANCE default_pal_GetObject(void) {
+    return NULL;  // Return NULL if you don't need an actual instance
+}
+
+LOGHANDLE default_log_GetObject(void) {
+    return NULL;  // Return NULL if logging is optional
+}
+
  
