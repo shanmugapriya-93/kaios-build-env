@@ -409,7 +409,6 @@ void iota_test_Setup
 	}
 }
 
-#include <emscripten/emscripten.h>
 
 EMSCRIPTEN_KEEPALIVE
 unsigned int iota_test_init(void)
