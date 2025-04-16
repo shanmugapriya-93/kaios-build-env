@@ -41,3 +41,38 @@ void* pal_MemoryFree(void* ptr) {
     return NULL;  // Return NULL to indicate memory has been freed
 }
 
+// Stub for pal_LogInit
+unsigned int pal_LogInit() {
+    printf("Stub: pal_LogInit()\n");
+    return 0;  // Success
+}
+
+// Stub for pal_Init
+unsigned int pal_Init() {
+    printf("Stub: pal_Init()\n");
+    return 0;  // Success
+}
+
+// Stub for pal_Deinit
+unsigned int pal_Deinit() {
+    printf("Stub: pal_Deinit()\n");
+    return 0;  // Success
+}
+
+// Stub for pal_SocketSetDeviceName
+unsigned int pal_SocketSetDeviceName(const char* deviceName) {
+    printf("Stub: pal_SocketSetDeviceName('%s')\n", deviceName);
+    return 0;  // Success
+}
+
+// Stub for pal_LogDeinit
+unsigned int pal_LogDeinit() {
+    printf("Stub: pal_LogDeinit()\n");
+    return 0;  // Success
+}
+
+// Stub for pal_StringLength
+unsigned int pal_StringLength(const char* str) {
+    printf("Stub: pal_StringLength('%s')\n", str);
+    return strlen(str);  // Return string length
+}
