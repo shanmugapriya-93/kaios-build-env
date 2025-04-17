@@ -57,6 +57,7 @@ COMPACT DISK ARE SUBJECT TO THE LICENSE AGREEMENT ACCOMPANYING THE COMPACT DISK.
  #include "lims.h"
  
  #include "lims_wrapper.h"
+ #pragma weak pal_MutexCreate
 
  #ifdef DEBUG
 #define log_debug(fmt, ...) printf("[DEBUG] " fmt "\n", ##__VA_ARGS__)
