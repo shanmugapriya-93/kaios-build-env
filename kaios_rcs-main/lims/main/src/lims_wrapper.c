@@ -370,7 +370,7 @@ unsigned int iota_test_setup(void)
 
     iotaState.limsHandle = NULL;
 
-    iotaState.logHandle = pal_LogInit((void *)"iota_test.log", KLogOutputStdOut, 0x000003B3,
+    iotaState.logHandle = pal_LogInit((void *)"stdout", KLogOutputStdOut, 0x000003B3,
                                       KLogLevel_All, KLogComponent_All, KLogType_All);
     printf("[DEBUG] pal_LogInit done\n");
 
