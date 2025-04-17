@@ -361,10 +361,8 @@ LOGHANDLE default_log_GetObject(void);
 	 }
  }
  
- void iota_test_Setup
- (
-	 void
- )
+ EMSCRIPTEN_KEEPALIVE
+ unsigned int iota_test_setup(void)
  {
 	 unsigned int error = KPALErrorNone;
  
@@ -414,6 +412,8 @@ LOGHANDLE default_log_GetObject(void);
  
 		 return;
 	 }
+	 printf("Setup completed successfully.\n");
+    return KPALErrorNone;
  }
 
 
@@ -454,7 +454,9 @@ EMSCRIPTEN_KEEPALIVE unsigned int iota_test_init(void)
 
     if (!iotaState.mutexHandle) {
         MUTEXHANDLE handle = NULL;
+		printf("[DEBUG] Calling pal_MutexCreate...\n");
         u_int32 result = pal_MutexCreate(default_pal_GetObject(), &handle);
+		printf("[DEBUG] pal_MutexCreate returned: %d, handle: %p\n", result, handle);
         if (result != 0 || handle == NULL) {
             log_debug("ERROR: pal_MutexCreate() failed or returned NULL.");
             return 998;
@@ -861,6 +863,7 @@ PALINSTANCE default_pal_GetObject(void) {
 LOGHANDLE default_log_GetObject(void) {
     return (LOGHANDLE)0x2; // Return a non-NULL dummy pointer
 }
+
 u_int32 pal_MutexCreate(PALINSTANCE palInstance, MUTEXHANDLE *mutexOut) {
     printf("[STUB] pal_MutexCreate() called\n");
 
