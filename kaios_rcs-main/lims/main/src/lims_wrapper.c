@@ -375,10 +375,8 @@ unsigned int iota_test_setup(void)
     printf("[DEBUG] pal_LogInit done\n");
 
     error = pal_Init(iotaState.logHandle, &iotaState.palLimsInstance);
-    printf("[DEBUG] pal_Init returned: %u\n", error);
-
-    if (error != KPALErrorNone) {
-        printf("Could not initialize the PAL instance!\n");
+	 if (error != KPALErrorNone)
+	 {
 
         if (iotaState.logHandle != NULL)
             pal_LogDeinit(&iotaState.logHandle);
