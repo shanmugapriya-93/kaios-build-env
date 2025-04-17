@@ -57,6 +57,13 @@ COMPACT DISK ARE SUBJECT TO THE LICENSE AGREEMENT ACCOMPANYING THE COMPACT DISK.
  #include "lims.h"
  
  #include "lims_wrapper.h"
+
+ #ifdef DEBUG
+#define log_debug(fmt, ...) printf("[DEBUG] " fmt "\n", ##__VA_ARGS__)
+#else
+#define log_debug(fmt, ...)
+#endif
+
  
  #if 0
  typedef struct
@@ -440,14 +447,16 @@ void iota_test_setup_env(void) {
 
 
  
- EMSCRIPTEN_KEEPALIVE unsigned int iota_test_init(void)
+EMSCRIPTEN_KEEPALIVE unsigned int iota_test_init(void)
 {
-    printf("[INIT] Entered iota_test_init()\n");
-	if (!iotaState.mutexHandle) {
-        printf("[ERROR] mutexHandle is NULL. Aborting init.\n");
+    log_debug("Entered iota_test_init()");
+    if (!iotaState.mutexHandle) {
+        log_debug("ERROR: mutexHandle is NULL. Aborting init.");
         return 999;
     }
+
     pal_MutexLock(iotaState.mutexHandle);
+
     unsigned int error = LIMS_NO_ERROR;
     lims_ConfigStruct config;
     lims_CallbackStruct callback;
@@ -456,15 +465,13 @@ void iota_test_setup_env(void) {
     memset(&callback, 0, sizeof(lims_CallbackStruct));
 
     iota_test_Setup();
-    printf("[INIT] Called iota_test_Setup()\n");
+    log_debug("Called iota_test_Setup()");
 
     config.pal = iotaState.palLimsInstance;
     config.logHandle = iotaState.logHandle;
-
     config.bEnableTcp = Enum_FALSE;
     config.bEnableUdp = Enum_TRUE;
 
-    // Allocate and set strings
     config.pHomeDomain = strdup("ecrio.com");
     config.pPassword = strdup("ecrio@123");
     config.pPrivateIdentity = strdup("1111@ecrio.com");
@@ -476,7 +483,7 @@ void iota_test_setup_env(void) {
     if (!config.pHomeDomain || !config.pPassword || !config.pPrivateIdentity ||
         !config.pPublicIdentity || !config.pUserAgent || !config.pDeviceId || !config.pPANI)
     {
-        printf("[ERROR] Failed to allocate memory for config strings\n");
+        log_debug("ERROR: Failed to allocate memory for config strings");
         pal_MutexUnlock(iotaState.mutexHandle);
         return 999;
     }
@@ -490,7 +497,7 @@ void iota_test_setup_env(void) {
     config.pRelayServerIP = NULL;
     config.uRelayServerPort = 2855;
 
-    printf("[CONFIG] Completed configuration setup\n");
+    log_debug("Completed configuration setup");
 
     iotaState.bIsFileSender = false;
     strcpy(iotaState.calleeNumber, "sip:+14087770002@ecrio.com");
@@ -501,14 +508,14 @@ void iota_test_setup_env(void) {
     callback.pContext = NULL;
     callback.pUCEPropertyCallback = NULL;
 
-    printf("[CONFIG] Calling lims_Init()\n");
+    log_debug("Calling lims_Init()");
     pal_MutexUnlock(iotaState.mutexHandle);
     iotaState.limsHandle = lims_Init(&config, &callback, &error);
     pal_MutexLock(iotaState.mutexHandle);
 
     if (iotaState.limsHandle != NULL)
     {
-        printf("[LIMS] lims_Init successful\n");
+        log_debug("lims_Init successful");
         lims_NetworkConnectionStruct network;
         memset(&network, 0, sizeof(lims_NetworkConnectionStruct));
 
@@ -516,7 +523,7 @@ void iota_test_setup_env(void) {
         network.ppRemoteIPs = (char **)calloc(1, sizeof(char *));
         if (!network.ppRemoteIPs)
         {
-            printf("[ERROR] Failed to allocate ppRemoteIPs\n");
+            log_debug("ERROR: Failed to allocate ppRemoteIPs");
             pal_MutexUnlock(iotaState.mutexHandle);
             return 998;
         }
@@ -524,7 +531,7 @@ void iota_test_setup_env(void) {
         network.ppRemoteIPs[0] = (char *)malloc(strlen("192.168.56.1") + 1);
         if (!network.ppRemoteIPs[0])
         {
-            printf("[ERROR] Failed to allocate IP string\n");
+            log_debug("ERROR: Failed to allocate IP string");
             free(network.ppRemoteIPs);
             pal_MutexUnlock(iotaState.mutexHandle);
             return 997;
@@ -537,8 +544,7 @@ void iota_test_setup_env(void) {
         network.eIPType = lims_Network_IP_Type_V4;
         network.uStatus = lims_Network_Status_Success;
 
-        printf("[NETWORK] Calling lims_NetworkStateChange()\n");
-
+        log_debug("Calling lims_NetworkStateChange()");
         pal_MutexUnlock(iotaState.mutexHandle);
         error = lims_NetworkStateChange(
             iotaState.limsHandle,
@@ -550,28 +556,21 @@ void iota_test_setup_env(void) {
 
         if (error != LIMS_NO_ERROR)
         {
-            printf("[ERROR] lims_NetworkStateChange failed with error code: %u\n", error);
+            log_debug("ERROR: lims_NetworkStateChange failed with error code: %u", error);
         }
 
-        // Clean up network memory
-        if (network.ppRemoteIPs)
+        for (unsigned int i = 0; i < network.uNoOfRemoteIps; ++i)
         {
-            for (unsigned int i = 0; i < network.uNoOfRemoteIps; ++i)
-            {
-                if (network.ppRemoteIPs[i])
-                {
-                    free(network.ppRemoteIPs[i]);
-                }
-            }
-            free(network.ppRemoteIPs);
+            if (network.ppRemoteIPs[i])
+                free(network.ppRemoteIPs[i]);
         }
+        free(network.ppRemoteIPs);
     }
     else
     {
-        printf("[ERROR] lims_Init failed, handle is NULL\n");
+        log_debug("ERROR: lims_Init failed, handle is NULL");
     }
 
-    // Free config memory
     if (config.pHomeDomain) free(config.pHomeDomain);
     if (config.pPassword) free(config.pPassword);
     if (config.pPrivateIdentity) free(config.pPrivateIdentity);
@@ -583,11 +582,12 @@ void iota_test_setup_env(void) {
     if (config.pRelayServerIP) free(config.pRelayServerIP);
     if (config.pTLSCertificate) free(config.pTLSCertificate);
 
-    printf("[CLEANUP] Freed configuration memory\n");
+    log_debug("Freed configuration memory");
     pal_MutexUnlock(iotaState.mutexHandle);
-    printf("[INIT] Exiting iota_test_init() with error = %u\n", error);
+    log_debug("Exiting iota_test_init() with error = %u", error);
     return error;
 }
+
 
  
  EMSCRIPTEN_KEEPALIVE unsigned int iota_test_deinit
@@ -854,9 +854,14 @@ PALINSTANCE default_pal_GetObject(void) {
 LOGHANDLE default_log_GetObject(void) {
     return (LOGHANDLE)0x2; // Return a non-NULL dummy pointer
 }
-MUTEXHANDLE pal_MutexCreate(PALINSTANCE palInstance, MUTEXHANDLE *mutexOut) {
+u_int32 pal_MutexCreate(PALINSTANCE palInstance, MUTEXHANDLE *mutexOut) {
     printf("[STUB] pal_MutexCreate() called\n");
-    return (MUTEXHANDLE)0x1234; // Dummy non-NULL mutex
+    
+    if (mutexOut) {
+        *mutexOut = (MUTEXHANDLE)0x1234; // Assign dummy handle
+    }
+    
+    return 0; // 0 typically means success
 }
 
 
