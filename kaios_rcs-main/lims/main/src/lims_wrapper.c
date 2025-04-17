@@ -376,6 +376,7 @@ LOGHANDLE default_log_GetObject(void);
 	 error = pal_Init(iotaState.logHandle, &iotaState.palLimsInstance);
 	 if (error != KPALErrorNone)
 	 {
+		printf("Error from pal_Init: %d\n", error);
 		 printf("Could not initialize the PAL instance!\n");
  
 		 if (iotaState.logHandle != NULL)
