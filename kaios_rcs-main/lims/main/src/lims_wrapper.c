@@ -363,56 +363,61 @@ LOGHANDLE default_log_GetObject(void);
  }
  
  EMSCRIPTEN_KEEPALIVE
-unsigned int iota_test_setup(void)
-{
-    unsigned int error = KPALErrorNone;
-    printf("[DEBUG] iota_test_setup called\n");
-
-    iotaState.limsHandle = NULL;
-
-    iotaState.logHandle = pal_LogInit((void *)"stdout", KLogOutputStdOut, 0x000003B3,
-                                      KLogLevel_All, KLogComponent_All, KLogType_All);
-    printf("[DEBUG] pal_LogInit done\n");
-
-    error = pal_Init(iotaState.logHandle, &iotaState.palLimsInstance);
+ unsigned int iota_test_setup(void)
+ {
+	 unsigned int error = KPALErrorNone;
+ 
+	 iotaState.limsHandle = NULL;
+ 
+	 iotaState.logHandle = pal_LogInit((void *)"iota_test.log", KLogOutputStdOut, 0x000003B3, KLogLevel_All, KLogComponent_All, KLogType_All);
+ 
+	 // Initialize the PAL, get the PAL instance.
+	 printf("[DEBUG] Calling pal_Init...\n");
+	// error = pal_Init(iotaState.logHandle, &iotaState.palLimsInstance);
+	// if (error != KPALErrorNone)
+	 {
+		 printf("Could not initialize the PAL instance!\n");
+ 
+		 if (iotaState.logHandle != NULL)
+		 {
+			 // Deinitialize the logging instance.
+			 pal_LogDeinit(&iotaState.logHandle);
+		 }
+ 
+		 return error;
+	 }
+ 
+	 error = pal_MutexCreate(iotaState.palLimsInstance, &iotaState.mutexHandle);
 	 if (error != KPALErrorNone)
 	 {
-
-        if (iotaState.logHandle != NULL)
-            pal_LogDeinit(&iotaState.logHandle);
-
-        return error;
-    }
-
-    error = pal_MutexCreate(iotaState.palLimsInstance, &iotaState.mutexHandle);
-    printf("[DEBUG] pal_MutexCreate returned: %u\n", error);
-
-    if (error != KPALErrorNone) {
-        printf("Could not create mutex!\n");
-
-        pal_Deinit(iotaState.palLimsInstance);
-
-        if (iotaState.logHandle != NULL)
-            pal_LogDeinit(&iotaState.logHandle);
-
-        return error;
-    }
-
-    error = pal_SocketSetDeviceName(iotaState.palLimsInstance, iotaState.localInterface);
-    printf("[DEBUG] pal_SocketSetDeviceName returned: %u\n", error);
-
-    if (error != KPALErrorNone) {
-        pal_Deinit(iotaState.palLimsInstance);
-
-        if (iotaState.logHandle != NULL)
-            pal_LogDeinit(&iotaState.logHandle);
-
-        return error;
-    }
-
-    printf("Setup completed successfully.\n");
+		 printf("Could not initialize the PAL instance!\n");
+ 
+		 pal_Deinit(iotaState.palLimsInstance);
+		 if (iotaState.logHandle != NULL)
+		 {
+			 // Deinitialize the logging instance.
+			 pal_LogDeinit(&iotaState.logHandle);
+		 }
+ 
+		 return error;
+	 }
+	 printf("[DEBUG] pal_Init succeeded\n");
+ 
+	 error = pal_SocketSetDeviceName(iotaState.palLimsInstance, iotaState.localInterface);
+	 if (error != KPALErrorNone)
+	 {
+		 pal_Deinit(iotaState.palLimsInstance);
+		 if (iotaState.logHandle != NULL)
+		 {
+			 // Deinitialize the logging instance.
+			 pal_LogDeinit(&iotaState.logHandle);
+		 }
+ 
+		 return error;
+	 }
+	 printf("Setup completed successfully.\n");
     return KPALErrorNone;
-}
+ }
 
 
 
