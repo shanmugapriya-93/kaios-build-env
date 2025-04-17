@@ -58,6 +58,7 @@ COMPACT DISK ARE SUBJECT TO THE LICENSE AGREEMENT ACCOMPANYING THE COMPACT DISK.
  
  #include "lims_wrapper.h"
  #pragma weak pal_MutexCreate
+ unsigned int iota_test_setup(void);  
 
  #ifdef DEBUG
 #define log_debug(fmt, ...) printf("[DEBUG] " fmt "\n", ##__VA_ARGS__)
@@ -382,7 +383,7 @@ LOGHANDLE default_log_GetObject(void);
 			 pal_LogDeinit(&iotaState.logHandle);
 		 }
  
-		 return;
+		 return error;
 	 }
  
 	 error = pal_MutexCreate(iotaState.palLimsInstance, &iotaState.mutexHandle);
@@ -397,7 +398,7 @@ LOGHANDLE default_log_GetObject(void);
 			 pal_LogDeinit(&iotaState.logHandle);
 		 }
  
-		 return;
+		 return error;
 	 }
  
 	 error = pal_SocketSetDeviceName(iotaState.palLimsInstance, iotaState.localInterface);
@@ -410,7 +411,7 @@ LOGHANDLE default_log_GetObject(void);
 			 pal_LogDeinit(&iotaState.logHandle);
 		 }
  
-		 return;
+		 return error;
 	 }
 	 printf("Setup completed successfully.\n");
     return KPALErrorNone;
@@ -473,7 +474,7 @@ EMSCRIPTEN_KEEPALIVE unsigned int iota_test_init(void)
     memset(&config, 0, sizeof(lims_ConfigStruct));
     memset(&callback, 0, sizeof(lims_CallbackStruct));
 
-    iota_test_Setup();
+    iota_test_setup();
     log_debug("Called iota_test_Setup()");
 
     config.pal = iotaState.palLimsInstance;
