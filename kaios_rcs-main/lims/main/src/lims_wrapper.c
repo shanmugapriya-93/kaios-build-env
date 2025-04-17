@@ -369,12 +369,12 @@ LOGHANDLE default_log_GetObject(void);
  
 	 iotaState.limsHandle = NULL;
  
-	 iotaState.logHandle = pal_LogInit((void *)"iota_test.log", KLogOutputStdOut, 0x000003B3, KLogLevel_All, KLogComponent_All, KLogType_All);
+	 iotaState.logHandle = pal_LogInit((void *)"stdout", KLogOutputStdOut, 0x000003B3, KLogLevel_All, KLogComponent_All, KLogType_All);
  
 	 // Initialize the PAL, get the PAL instance.
 	 printf("[DEBUG] Calling pal_Init...\n");
-	// error = pal_Init(iotaState.logHandle, &iotaState.palLimsInstance);
-	// if (error != KPALErrorNone)
+	 error = pal_Init(iotaState.logHandle, &iotaState.palLimsInstance);
+	 if (error != KPALErrorNone)
 	 {
 		 printf("Could not initialize the PAL instance!\n");
  
