@@ -451,9 +451,15 @@ void iota_test_setup_env(void) {
 EMSCRIPTEN_KEEPALIVE unsigned int iota_test_init(void)
 {
     log_debug("Entered iota_test_init()");
+
     if (!iotaState.mutexHandle) {
-        log_debug("ERROR: mutexHandle is NULL. Aborting init.");
-        return 999;
+        MUTEXHANDLE handle = NULL;
+        u_int32 result = pal_MutexCreate(default_pal_GetObject(), &handle);
+        if (result != 0 || handle == NULL) {
+            log_debug("ERROR: pal_MutexCreate() failed or returned NULL.");
+            return 998;
+        }
+        iotaState.mutexHandle = handle;
     }
 
     pal_MutexLock(iotaState.mutexHandle);
@@ -857,13 +863,16 @@ LOGHANDLE default_log_GetObject(void) {
 }
 u_int32 pal_MutexCreate(PALINSTANCE palInstance, MUTEXHANDLE *mutexOut) {
     printf("[STUB] pal_MutexCreate() called\n");
-    
-    if (mutexOut) {
-        *mutexOut = (MUTEXHANDLE)0x1234; // Assign dummy handle
+
+    if (mutexOut != NULL) {
+        *mutexOut = (MUTEXHANDLE)0x1234; // Dummy non-null handle
+        return 0; // Success
+    } else {
+        printf("[ERROR] mutexOut is NULL!\n");
+        return 1; // Failure
     }
-    
-    return 0; // 0 typically means success
 }
+
 
 
  
